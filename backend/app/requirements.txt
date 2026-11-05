@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+pydantic
+trafilatura
+scikit-learn
+pandas
+joblib
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart

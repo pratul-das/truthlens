@@ -1,0 +1,6558 @@
+﻿/* =========================================================
+   TRUTHLENS - MAIN JAVASCRIPT
+   Home + Settings + Login + Theme + Language
+   Profile + Analysis Notifications + Security Notifications
+   Support Modals
+========================================================= */
+
+"use strict";
+
+
+/* =========================================================
+   BASIC HELPERS
+========================================================= */
+
+function getCurrentLanguage() {
+
+    return localStorage.getItem("language") || "English";
+
+}
+
+
+function getSavedBoolean(key, defaultValue = true) {
+
+    const value =
+        localStorage.getItem(key);
+
+    if (value === null) {
+
+        return defaultValue;
+
+    }
+
+    return value === "true";
+
+}
+
+
+function escapeHTML(value) {
+
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+
+}
+/* =========================================================
+   BACKEND AUTHENTICATION
+========================================================= */
+
+async function verifyBackendSession() {
+
+    const accessToken =
+        sessionStorage.getItem(
+            "truthlensAccessToken"
+        ) ||
+        localStorage.getItem(
+            "truthlensAccessToken"
+        );
+
+    /* -----------------------------------------
+       No backend token
+       Guest users can continue normally
+    ----------------------------------------- */
+
+    if (!accessToken) {
+
+        return null;
+
+    }
+
+    try {
+
+        const response =
+            await fetch(
+                "http://127.0.0.1:8000/me",
+                {
+                    method: "GET",
+                    headers: {
+                        "Authorization":
+                            "Bearer " +
+                            accessToken
+                    }
+                }
+            );
+
+        if (!response.ok) {
+
+    localStorage.removeItem(
+        "truthlensAccessToken"
+    );
+
+    sessionStorage.removeItem(
+        "truthlensAccessToken"
+    );
+
+    localStorage.removeItem(
+        "truthlensUser"
+    );
+
+    sessionStorage.removeItem(
+        "truthlensUser"
+    );
+
+    localStorage.setItem(
+        "truthlensLoggedOut",
+        "true"
+    );
+
+    return null;
+}
+
+        const data =
+            await response.json();
+
+        if (!data.user) {
+
+            return null;
+
+        }
+
+       const existingUser =
+    getSavedUser();
+
+const verifiedUser = {
+
+    id:
+        data.user.id,
+
+    name:
+        data.user.name,
+
+    email:
+        data.user.email,
+
+    isGuest:
+        false,
+
+    profilePicture:
+        existingUser &&
+        existingUser.profilePicture
+            ? existingUser.profilePicture
+            : null
+};
+        /* -----------------------------------------
+           Keep profile data synchronized
+        ----------------------------------------- */
+
+        if (
+            sessionStorage.getItem(
+                "truthlensAccessToken"
+            )
+        ) {
+
+            sessionStorage.setItem(
+                "truthlensUser",
+                JSON.stringify(
+                    verifiedUser
+                )
+            );
+
+        } else {
+
+            localStorage.setItem(
+                "truthlensUser",
+                JSON.stringify(
+                    verifiedUser
+                )
+            );
+
+        }
+
+        return verifiedUser;
+
+    } catch (error) {
+
+        console.error(
+            "Authentication verification failed:",
+            error
+        );
+
+        return null;
+
+    }
+
+}
+
+/* =========================================================
+   NOTIFICATION STORAGE
+========================================================= */
+
+function getSavedTruthLensNotifications() {
+
+    try {
+
+        const saved =
+            localStorage.getItem(
+                "truthlensNotifications"
+            );
+
+        if (!saved) {
+
+            return [];
+
+        }
+
+        const notifications =
+            JSON.parse(saved);
+
+        return Array.isArray(notifications)
+            ? notifications
+            : [];
+
+    } catch (error) {
+
+        console.error(
+            "Unable to read notifications:",
+            error
+        );
+
+        return [];
+
+    }
+
+}
+
+
+function saveTruthLensNotifications(
+    notifications
+) {
+
+    localStorage.setItem(
+        "truthlensNotifications",
+        JSON.stringify(
+            notifications.slice(0, 30)
+        )
+    );
+
+}
+
+
+/* =========================================================
+   NOTIFICATION TRANSLATIONS
+========================================================= */
+
+function getNotificationPanelText() {
+
+    const translations = {
+
+        English: {
+
+            title:
+                "Notifications",
+
+            markAll:
+                "Mark all as read",
+
+            clear:
+                "Clear all",
+
+            empty:
+                "No notifications yet.",
+
+            analysis:
+                "Analysis",
+
+            security:
+                "Security"
+
+        },
+
+
+        Hindi: {
+
+            title:
+                "à¤¸à¥‚à¤šà¤¨à¤¾à¤à¤‚",
+
+            markAll:
+                "à¤¸à¤­à¥€ à¤•à¥‹ à¤ªà¤¢à¤¼à¤¾ à¤¹à¥à¤† à¤šà¤¿à¤¹à¥à¤¨à¤¿à¤¤ à¤•à¤°à¥‡à¤‚",
+
+            clear:
+                "à¤¸à¤­à¥€ à¤¸à¤¾à¤«à¤¼ à¤•à¤°à¥‡à¤‚",
+
+            empty:
+                "à¤…à¤­à¥€ à¤•à¥‹à¤ˆ à¤¸à¥‚à¤šà¤¨à¤¾ à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆà¥¤",
+
+            analysis:
+                "à¤µà¤¿à¤¶à¥à¤²à¥‡à¤·à¤£",
+
+            security:
+                "à¤¸à¥à¤°à¤•à¥à¤·à¤¾"
+
+        },
+
+
+        Bengali: {
+
+            title:
+                "à¦¬à¦¿à¦œà§à¦žà¦ªà§à¦¤à¦¿",
+
+            markAll:
+                "à¦¸à¦¬à¦—à§à¦²à§‹ à¦ªà¦¡à¦¼à¦¾ à¦¹à¦¿à¦¸à§‡à¦¬à§‡ à¦šà¦¿à¦¹à§à¦¨à¦¿à¦¤ à¦•à¦°à§à¦¨",
+
+            clear:
+                "à¦¸à¦¬ à¦®à§à¦›à§‡ à¦«à§‡à¦²à§à¦¨",
+
+            empty:
+                "à¦à¦–à¦¨à¦“ à¦•à§‹à¦¨à§‹ à¦¬à¦¿à¦œà§à¦žà¦ªà§à¦¤à¦¿ à¦¨à§‡à¦‡à¥¤",
+
+            analysis:
+                "à¦¬à¦¿à¦¶à§à¦²à§‡à¦·à¦£",
+
+            security:
+                "à¦¨à¦¿à¦°à¦¾à¦ªà¦¤à§à¦¤à¦¾"
+
+        }
+
+    };
+
+
+    return (
+        translations[getCurrentLanguage()] ||
+        translations.English
+    );
+
+}
+
+
+/* =========================================================
+   ADD NOTIFICATION
+========================================================= */
+
+function addTruthLensNotification(
+    title,
+    message,
+    type = "analysis"
+) {
+
+    const notifications =
+        getSavedTruthLensNotifications();
+
+
+    notifications.unshift({
+
+        id:
+            Date.now() +
+            "-" +
+            Math.random()
+                .toString(36)
+                .slice(2),
+
+        title:
+            title,
+
+        message:
+            message,
+
+        type:
+            type,
+
+        time:
+            new Date().toISOString(),
+
+        read:
+            false
+
+    });
+
+
+    saveTruthLensNotifications(
+        notifications
+    );
+
+
+    renderTruthLensNotifications();
+
+}
+
+
+/* =========================================================
+   BROWSER NOTIFICATIONS
+========================================================= */
+
+function sendBrowserNotification(
+    title,
+    message
+) {
+
+    if (!("Notification" in window)) {
+
+        return;
+
+    }
+
+
+    if (
+        Notification.permission !==
+        "granted"
+    ) {
+
+        return;
+
+    }
+
+
+    try {
+
+        new Notification(
+            "TruthLens â€¢ " + title,
+            {
+                body:
+                    message
+            }
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Browser notification error:",
+            error
+        );
+
+    }
+
+}
+
+
+async function requestBrowserNotificationPermission() {
+
+    if (!("Notification" in window)) {
+
+        return false;
+
+    }
+
+
+    if (
+        Notification.permission ===
+        "granted"
+    ) {
+
+        return true;
+
+    }
+
+
+    if (
+        Notification.permission ===
+        "denied"
+    ) {
+
+        return false;
+
+    }
+
+
+    try {
+
+        const permission =
+            await Notification.requestPermission();
+
+        return permission === "granted";
+
+    } catch (error) {
+
+        console.error(
+            "Notification permission error:",
+            error
+        );
+
+        return false;
+
+    }
+
+}
+
+
+/* =========================================================
+   ANALYSIS NOTIFICATIONS
+========================================================= */
+
+function getAnalysisNotificationText(
+    prediction,
+    confidence
+) {
+
+    const languages = {
+
+        English: {
+
+            title:
+                "Analysis Complete",
+
+            message:
+                prediction +
+                " â€¢ Model confidence: " +
+                (
+                    confidence !== null &&
+                    confidence !== undefined
+                        ? confidence + "%"
+                        : "Not available"
+                )
+
+        },
+
+
+        Hindi: {
+
+            title:
+                "à¤µà¤¿à¤¶à¥à¤²à¥‡à¤·à¤£ à¤ªà¥‚à¤°à¤¾ à¤¹à¥à¤†",
+
+            message:
+                prediction +
+                " â€¢ à¤®à¥‰à¤¡à¤² à¤•à¤¾ à¤µà¤¿à¤¶à¥à¤µà¤¾à¤¸: " +
+                (
+                    confidence !== null &&
+                    confidence !== undefined
+                        ? confidence + "%"
+                        : "à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¨à¤¹à¥€à¤‚"
+                )
+
+        },
+
+
+        Bengali: {
+
+            title:
+                "à¦¬à¦¿à¦¶à§à¦²à§‡à¦·à¦£ à¦¸à¦®à§à¦ªà¦¨à§à¦¨ à¦¹à¦¯à¦¼à§‡à¦›à§‡",
+
+            message:
+                prediction +
+                " â€¢ à¦®à¦¡à§‡à¦²à§‡à¦° à¦†à¦¤à§à¦®à¦¬à¦¿à¦¶à§à¦¬à¦¾à¦¸: " +
+                (
+                    confidence !== null &&
+                    confidence !== undefined
+                        ? confidence + "%"
+                        : "à¦‰à¦ªà¦²à¦¬à§à¦§ à¦¨à¦¯à¦¼"
+                )
+
+        }
+
+    };
+
+
+    return (
+        languages[getCurrentLanguage()] ||
+        languages.English
+    );
+
+}
+
+
+function showAnalysisNotification(
+    prediction,
+    confidence
+) {
+
+    if (
+        !getSavedBoolean(
+            "analysisNotifications",
+            true
+        )
+    ) {
+
+        return;
+
+    }
+
+
+    const notification =
+        getAnalysisNotificationText(
+            prediction,
+            confidence
+        );
+
+
+    addTruthLensNotification(
+        notification.title,
+        notification.message,
+        "analysis"
+    );
+
+
+    sendBrowserNotification(
+        notification.title,
+        notification.message
+    );
+
+}
+
+
+/* =========================================================
+   SECURITY NOTIFICATIONS
+========================================================= */
+
+function showSecurityNotification(
+    title,
+    message
+) {
+
+    if (
+        !getSavedBoolean(
+            "securityNotifications",
+            true
+        )
+    ) {
+
+        return;
+
+    }
+
+
+    addTruthLensNotification(
+        title,
+        message,
+        "security"
+    );
+
+
+    sendBrowserNotification(
+        title,
+        message
+    );
+
+}
+
+
+/* =========================================================
+   NOTIFICATION UI
+========================================================= */
+
+function createTruthLensNotificationUI() {
+
+    if (!document.body) {
+
+        return;
+
+    }
+
+
+    if (
+        document.getElementById(
+            "truthlensNotificationUI"
+        )
+    ) {
+
+        return;
+
+    }
+
+
+    const wrapper =
+        document.createElement("div");
+
+
+    wrapper.id =
+        "truthlensNotificationUI";
+
+
+    wrapper.innerHTML = `
+
+        <div
+            id="truthlensNotificationBell"
+            title="Notifications"
+            aria-label="Notifications"
+            role="button"
+            tabindex="0"
+            style="
+                position:fixed;
+                right:24px;
+                bottom:24px;
+                width:52px;
+                height:52px;
+                border-radius:50%;
+                background:#2563eb;
+                color:white;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                cursor:pointer;
+                z-index:9998;
+                box-shadow:
+                    0 8px 24px rgba(0,0,0,.18);
+                font-size:23px;
+                user-select:none;
+            "
+        >
+
+            ðŸ””
+
+            <span
+                id="truthlensNotificationBadge"
+                style="
+                    position:absolute;
+                    top:-4px;
+                    right:-4px;
+                    min-width:20px;
+                    height:20px;
+                    padding:0 5px;
+                    border-radius:10px;
+                    background:#dc2626;
+                    color:white;
+                    display:none;
+                    align-items:center;
+                    justify-content:center;
+                    font-size:11px;
+                    font-weight:700;
+                    box-sizing:border-box;
+                "
+            ></span>
+
+        </div>
+
+
+        <div
+            id="truthlensNotificationPanel"
+            style="
+                position:fixed;
+                right:24px;
+                bottom:88px;
+                width:340px;
+                max-width:calc(100vw - 32px);
+                max-height:460px;
+                background:#ffffff;
+                color:#111827;
+                border:1px solid #e5e7eb;
+                border-radius:16px;
+                box-shadow:
+                    0 18px 50px rgba(0,0,0,.20);
+                z-index:9999;
+                display:none;
+                overflow:hidden;
+            "
+        >
+
+            <div
+                style="
+                    display:flex;
+                    align-items:center;
+                    justify-content:space-between;
+                    gap:10px;
+                    padding:15px 16px;
+                    border-bottom:
+                        1px solid #e5e7eb;
+                "
+            >
+
+                <strong
+                    id="truthlensNotificationTitle"
+                >
+                    Notifications
+                </strong>
+
+
+                <button
+                    id="truthlensMarkAllRead"
+                    type="button"
+                    style="
+                        border:0;
+                        background:transparent;
+                        color:#2563eb;
+                        cursor:pointer;
+                        font-size:12px;
+                        padding:4px;
+                    "
+                >
+                    Mark all as read
+                </button>
+
+            </div>
+
+
+            <div
+                id="truthlensNotificationList"
+                style="
+                    max-height:340px;
+                    overflow-y:auto;
+                "
+            ></div>
+
+
+            <div
+                style="
+                    padding:10px 16px;
+                    border-top:
+                        1px solid #e5e7eb;
+                    text-align:right;
+                "
+            >
+
+                <button
+                    id="truthlensClearNotifications"
+                    type="button"
+                    style="
+                        border:0;
+                        background:transparent;
+                        color:#dc2626;
+                        cursor:pointer;
+                        font-size:12px;
+                        padding:4px;
+                    "
+                >
+                    Clear all
+                </button>
+
+            </div>
+
+        </div>
+
+    `;
+
+
+    document.body.appendChild(wrapper);
+
+
+    const bell =
+        document.getElementById(
+            "truthlensNotificationBell"
+        );
+
+
+    const panel =
+        document.getElementById(
+            "truthlensNotificationPanel"
+        );
+
+
+    const markAllRead =
+        document.getElementById(
+            "truthlensMarkAllRead"
+        );
+
+
+    const clearNotifications =
+        document.getElementById(
+            "truthlensClearNotifications"
+        );
+
+
+    function toggleNotificationPanel() {
+
+        if (!panel) {
+
+            return;
+
+        }
+
+
+        panel.style.display =
+            panel.style.display === "block"
+                ? "none"
+                : "block";
+
+    }
+
+
+    if (bell) {
+
+        bell.addEventListener(
+            "click",
+            toggleNotificationPanel
+        );
+
+
+        bell.addEventListener(
+            "keydown",
+            function (event) {
+
+                if (
+                    event.key === "Enter" ||
+                    event.key === " "
+                ) {
+
+                    event.preventDefault();
+
+                    toggleNotificationPanel();
+
+                }
+
+            }
+        );
+
+    }
+
+
+    if (markAllRead) {
+
+        markAllRead.addEventListener(
+            "click",
+            function () {
+
+                const notifications =
+                    getSavedTruthLensNotifications();
+
+
+                notifications.forEach(
+                    function (notification) {
+
+                        notification.read =
+                            true;
+
+                    }
+                );
+
+
+                saveTruthLensNotifications(
+                    notifications
+                );
+
+
+                renderTruthLensNotifications();
+
+            }
+        );
+
+    }
+
+
+    if (clearNotifications) {
+
+        clearNotifications.addEventListener(
+            "click",
+            function () {
+
+                localStorage.removeItem(
+                    "truthlensNotifications"
+                );
+
+
+                renderTruthLensNotifications();
+
+            }
+        );
+
+    }
+
+
+    document.addEventListener(
+        "click",
+        function (event) {
+
+            if (
+                panel &&
+                panel.style.display === "block" &&
+                !panel.contains(event.target) &&
+                bell &&
+                !bell.contains(event.target)
+            ) {
+
+                panel.style.display =
+                    "none";
+
+            }
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   NOTIFICATION TIME
+========================================================= */
+
+function formatNotificationTime(value) {
+
+    const date =
+        new Date(value);
+
+
+    if (Number.isNaN(date.getTime())) {
+
+        return "";
+
+    }
+
+
+    const language =
+        getCurrentLanguage();
+
+
+    let locale =
+        "en-IN";
+
+
+    if (language === "Hindi") {
+
+        locale =
+            "hi-IN";
+
+    }
+
+
+    if (language === "Bengali") {
+
+        locale =
+            "bn-IN";
+
+    }
+
+
+    return date.toLocaleString(
+        locale,
+        {
+            dateStyle:
+                "medium",
+
+            timeStyle:
+                "short"
+        }
+    );
+
+}
+
+
+/* =========================================================
+   RENDER NOTIFICATIONS
+========================================================= */
+
+function renderTruthLensNotifications() {
+
+    const list =
+        document.getElementById(
+            "truthlensNotificationList"
+        );
+
+
+    const badge =
+        document.getElementById(
+            "truthlensNotificationBadge"
+        );
+
+
+    const title =
+        document.getElementById(
+            "truthlensNotificationTitle"
+        );
+
+
+    const markAllRead =
+        document.getElementById(
+            "truthlensMarkAllRead"
+        );
+
+
+    const clearNotifications =
+        document.getElementById(
+            "truthlensClearNotifications"
+        );
+
+
+    if (
+        !list ||
+        !badge ||
+        !title ||
+        !markAllRead ||
+        !clearNotifications
+    ) {
+
+        return;
+
+    }
+
+
+    const labels =
+        getNotificationPanelText();
+
+
+    title.textContent =
+        labels.title;
+
+
+    markAllRead.textContent =
+        labels.markAll;
+
+
+    clearNotifications.textContent =
+        labels.clear;
+
+
+    const notifications =
+        getSavedTruthLensNotifications();
+
+
+    const unreadCount =
+        notifications.filter(
+            notification =>
+                !notification.read
+        ).length;
+
+
+    if (unreadCount > 0) {
+
+        badge.style.display =
+            "flex";
+
+
+        badge.textContent =
+            unreadCount > 99
+                ? "99+"
+                : String(unreadCount);
+
+    } else {
+
+        badge.style.display =
+            "none";
+
+        badge.textContent =
+            "";
+
+    }
+
+
+    if (notifications.length === 0) {
+
+        list.innerHTML = `
+
+            <div
+                style="
+                    padding:28px 18px;
+                    text-align:center;
+                    color:#6b7280;
+                    font-size:14px;
+                "
+            >
+
+                ${labels.empty}
+
+            </div>
+
+        `;
+
+        return;
+
+    }
+
+
+    list.innerHTML =
+        "";
+
+
+    notifications.forEach(
+        function (notification) {
+
+            const item =
+                document.createElement("div");
+
+
+            const background =
+                notification.read
+                    ? "#ffffff"
+                    : "#eff6ff";
+
+
+            item.style.cssText =
+                "padding:13px 15px;" +
+                "border-bottom:1px solid #e5e7eb;" +
+                "cursor:pointer;" +
+                "background:" +
+                background +
+                ";";
+
+
+            const icon =
+                notification.type ===
+                "security"
+                    ? "ðŸ”"
+                    : "ðŸ”Ž";
+
+
+            item.innerHTML = `
+
+                <div
+                    style="
+                        display:flex;
+                        align-items:flex-start;
+                        justify-content:
+                            space-between;
+                        gap:10px;
+                    "
+                >
+
+                    <strong
+                        style="
+                            font-size:13px;
+                            line-height:1.4;
+                        "
+                    >
+
+                        ${icon}
+
+                        ${escapeHTML(
+                            notification.title
+                        )}
+
+                    </strong>
+
+
+                    ${
+                        notification.read
+                            ? ""
+                            : `
+                                <span
+                                    style="
+                                        width:7px;
+                                        height:7px;
+                                        flex:0 0 7px;
+                                        border-radius:50%;
+                                        background:#2563eb;
+                                        margin-top:5px;
+                                    "
+                                ></span>
+                            `
+                    }
+
+                </div>
+
+
+                <div
+                    style="
+                        margin-top:5px;
+                        font-size:12px;
+                        line-height:1.5;
+                        color:#4b5563;
+                    "
+                >
+
+                    ${escapeHTML(
+                        notification.message
+                    )}
+
+                </div>
+
+
+                <div
+                    style="
+                        margin-top:6px;
+                        font-size:10px;
+                        color:#9ca3af;
+                    "
+                >
+
+                    ${formatNotificationTime(
+                        notification.time
+                    )}
+
+                </div>
+
+            `;
+
+
+            item.addEventListener(
+                "click",
+                function () {
+
+                    const updated =
+                        getSavedTruthLensNotifications();
+
+
+                    const target =
+                        updated.find(
+                            entry =>
+                                entry.id ===
+                                notification.id
+                        );
+
+
+                    if (target) {
+
+                        target.read =
+                            true;
+
+                    }
+
+
+                    saveTruthLensNotifications(
+                        updated
+                    );
+
+
+                    renderTruthLensNotifications();
+
+                }
+            );
+
+
+            list.appendChild(item);
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   START NOTIFICATION UI
+========================================================= */
+
+createTruthLensNotificationUI();
+
+renderTruthLensNotifications();
+
+
+/* =========================================================
+   HOME PAGE - TEXT / LINK TOGGLE
+========================================================= */
+
+const checkButton =
+    document.getElementById(
+        "checkButton"
+    );
+
+
+const newsText =
+    document.getElementById(
+        "newsText"
+    );
+
+
+const newsLink =
+    document.getElementById(
+        "newsLink"
+    );
+
+
+const textOption =
+    document.getElementById(
+        "textOption"
+    );
+
+
+const linkOption =
+    document.getElementById(
+        "linkOption"
+    );
+
+
+const result =
+    document.getElementById(
+        "result"
+    );
+
+
+if (
+    textOption &&
+    linkOption &&
+    newsText &&
+    newsLink
+) {
+
+    textOption.addEventListener(
+        "click",
+        function () {
+
+            textOption.classList.add(
+                "active"
+            );
+
+
+            linkOption.classList.remove(
+                "active"
+            );
+
+
+            newsText.style.display =
+                "block";
+
+
+            newsLink.style.display =
+                "none";
+
+        }
+    );
+
+
+    linkOption.addEventListener(
+        "click",
+        function () {
+
+            linkOption.classList.add(
+                "active"
+            );
+
+
+            textOption.classList.remove(
+                "active"
+            );
+
+
+            newsLink.style.display =
+                "block";
+
+
+            newsText.style.display =
+                "none";
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   HOME PAGE - NEWS ANALYSIS
+========================================================= */
+
+if (checkButton) {
+
+    checkButton.addEventListener(
+        "click",
+        async function () {
+
+            let input =
+                "";
+
+
+            if (
+                textOption &&
+                textOption.classList.contains(
+                    "active"
+                ) &&
+                newsText
+            ) {
+
+                input =
+                    newsText.value.trim();
+
+            } else if (newsLink) {
+
+                input =
+                    newsLink.value.trim();
+
+            }
+
+
+            if (!input) {
+
+                if (result) {
+
+                    result.innerHTML = `
+
+                        <div
+                            class="result-warning"
+                        >
+                            âš ï¸ Please enter some
+                            news first.
+                        </div>
+
+                    `;
+
+                }
+
+                return;
+
+            }
+
+
+            if (result) {
+
+                result.innerHTML = `
+
+                    <div
+                        class="result-title"
+                    >
+                        ðŸ” Analyzing...
+                    </div>
+
+                    <p>
+                        Please wait while
+                        TruthLens analyzes
+                        the news.
+                    </p>
+
+                `;
+
+            }
+
+
+            try {
+
+                const isLinkMode =
+                    linkOption &&
+                    linkOption.classList.contains(
+                        "active"
+                    );
+
+
+                const endpoint =
+                    isLinkMode
+                        ? "http://127.0.0.1:8000/predict-url"
+                        : "http://127.0.0.1:8000/predict";
+
+
+                const requestBody =
+                    isLinkMode
+                        ? {
+                            url:
+                                input
+                        }
+                        : {
+                            text:
+                                input
+                        };
+
+
+                const response =
+                    await fetch(
+                        endpoint,
+                        {
+
+                            method:
+                                "POST",
+
+                            headers: {
+
+                                "Content-Type":
+                                    "application/json"
+
+                            },
+
+                            body:
+                                JSON.stringify(
+                                    requestBody
+                                )
+
+                        }
+                    );
+
+
+                if (!response.ok) {
+
+                    const errorData =
+                        await response
+                            .json()
+                            .catch(
+                                () => null
+                            );
+
+
+                    throw new Error(
+                        errorData?.detail ||
+                        "Server returned an error."
+                    );
+
+                }
+
+
+                const data =
+                    await response.json();
+
+
+                const prediction =
+                    data.prediction;
+
+
+                const confidence =
+                    data.confidence;
+
+
+                /* -------------------------
+                   CONFIDENCE
+                ------------------------- */
+
+                let confidenceMessage =
+                    "";
+
+
+                if (
+                    confidence === null ||
+                    confidence === undefined
+                ) {
+
+                    confidenceMessage = `
+
+                        <div
+                            class="result-warning"
+                        >
+
+                            âš ï¸ Confidence could
+                            not be calculated.
+
+                        </div>
+
+                    `;
+
+                } else if (
+                    confidence < 60
+                ) {
+
+                    confidenceMessage = `
+
+                        <div
+                            class="result-warning"
+                        >
+
+                            âš ï¸ Low confidence
+                            <br>
+
+                            The model is uncertain
+                            about this
+                            classification.
+
+                        </div>
+
+                    `;
+
+                } else if (
+                    confidence < 80
+                ) {
+
+                    confidenceMessage = `
+
+                        <div
+                            class="result-warning"
+                        >
+
+                            âš ï¸ Moderate confidence
+                            <br>
+
+                            Consider checking
+                            this information
+                            with reliable
+                            sources.
+
+                        </div>
+
+                    `;
+
+                } else {
+
+                    confidenceMessage = `
+
+                        <div
+                            class="result-success"
+                        >
+
+                            âœ“ High model
+                            confidence
+
+                        </div>
+
+                    `;
+
+                }
+
+
+                /* -------------------------
+                   PREDICTION
+                ------------------------- */
+
+                let statusText =
+                    "";
+
+
+                let disclaimer =
+                    "";
+
+
+                if (
+                    prediction === "Fake"
+                ) {
+
+                    statusText =
+                        "âš ï¸ FAKE NEWS";
+
+
+                    disclaimer = `
+
+                        <p>
+
+                            <strong>
+                                Important:
+                            </strong>
+
+                            This is an ML
+                            classification,
+                            not a factual
+                            verification.
+
+                        </p>
+
+                    `;
+
+                } else if (
+                    prediction === "Real"
+                ) {
+
+                    statusText =
+                        "âœ… REAL NEWS";
+
+
+                    disclaimer = `
+
+                        <p>
+
+                            <strong>
+                                Important:
+                            </strong>
+
+                            This is an ML
+                            classification,
+                            not a factual
+                            verification.
+
+                        </p>
+
+                    `;
+
+                } else {
+
+                    statusText =
+                        "ðŸ” UNKNOWN";
+
+
+                    disclaimer = `
+
+                        <p>
+
+                            The model returned
+                            an unexpected
+                            classification.
+
+                        </p>
+
+                    `;
+
+                }
+
+
+                const confidenceValue =
+                    confidence !== null &&
+                    confidence !== undefined
+                        ? confidence + "%"
+                        : "Not available";
+
+
+                const resultClass =
+                    prediction === "Fake"
+                        ? "fake-result"
+                        : prediction === "Real"
+                            ? "real-result"
+                            : "unknown-result";
+
+
+                if (result) {
+
+                    result.innerHTML = `
+
+                        <div
+                            class="
+                                result-card
+                                ${resultClass}
+                            "
+                        >
+
+                            <div
+                                class="result-header"
+                            >
+
+                                <div
+                                    class="result-title"
+                                >
+
+                                    ðŸ” Analysis Complete
+
+                                </div>
+
+
+                                <div
+                                    class="result-status"
+                                >
+
+                                    ${escapeHTML(
+                                        statusText
+                                    )}
+
+                                </div>
+
+                            </div>
+
+
+                            <div
+                                class="result-details"
+                            >
+
+                                <div
+                                    class="result-detail"
+                                >
+
+                                    <span>
+                                        Prediction
+                                    </span>
+
+
+                                    <strong>
+
+                                        ${escapeHTML(
+                                            prediction
+                                        )}
+
+                                    </strong>
+
+                                </div>
+
+
+                                <div
+                                    class="result-detail"
+                                >
+
+                                    <span>
+                                        Model Confidence
+                                    </span>
+
+
+                                    <strong>
+
+                                        ${escapeHTML(
+                                            confidenceValue
+                                        )}
+
+                                    </strong>
+
+                                </div>
+
+                            </div>
+
+
+                            ${confidenceMessage}
+
+
+                            <div
+                                class="result-message"
+                            >
+
+                                ${escapeHTML(
+                                    data.message ||
+                                    ""
+                                )}
+
+                            </div>
+
+
+                            <div
+                                class="
+                                    result-disclaimer
+                                "
+                            >
+
+                                ${disclaimer}
+
+                            </div>
+
+                        </div>
+
+                    `;
+
+                }
+
+
+                showAnalysisNotification(
+                    prediction,
+                    confidence
+                );
+
+
+            } catch (error) {
+
+                console.error(error);
+
+
+                if (result) {
+
+                    result.innerHTML = `
+
+                        <div
+                            class="result-warning"
+                        >
+
+                            âŒ Unable to connect
+                            to the TruthLens
+                            server.
+
+                        </div>
+
+
+                        <p>
+
+                            ${escapeHTML(
+                                error.message
+                            )}
+
+                        </p>
+
+
+                        <p>
+
+                            Please make sure
+                            the FastAPI backend
+                            is running.
+
+                        </p>
+
+                    `;
+
+                }
+
+            }
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   THEME
+========================================================= */
+
+const themeToggle =
+    document.getElementById(
+        "themeToggle"
+    );
+
+
+function applyTheme(theme) {
+
+    if (!document.body) {
+
+        return;
+
+    }
+
+
+    document.body.classList.toggle(
+        "dark-mode",
+        theme === "dark"
+    );
+
+}
+
+
+const savedTheme =
+    localStorage.getItem("theme") ||
+    "light";
+
+
+applyTheme(
+    savedTheme
+);
+
+
+if (themeToggle) {
+
+    themeToggle.checked =
+        savedTheme === "dark";
+
+
+    themeToggle.addEventListener(
+        "change",
+        function () {
+
+            const newTheme =
+                this.checked
+                    ? "dark"
+                    : "light";
+
+
+            localStorage.setItem(
+                "theme",
+                newTheme
+            );
+
+
+            applyTheme(
+                newTheme
+            );
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   LANGUAGE SYSTEM
+========================================================= */
+
+const languageSelect =
+    document.getElementById(
+        "languageSelect"
+    );
+
+const registerLanguage =
+    document.getElementById(
+        "registerLanguage"
+    );
+
+const translations = {
+
+    /* =====================================================
+       ENGLISH
+    ===================================================== */
+
+    English: {
+
+        /* -------------------------
+           LOGIN PAGE
+        ------------------------- */
+
+        loginBrandBadge:
+            "ðŸ›¡ï¸ Trusted AI Verification",
+
+        loginBrandTitle:
+            "Welcome back to TruthLens",
+
+        loginBrandDescription:
+            "Verify information, explore the facts, and stay informed with confidence.",
+
+        loginFeature1:
+            "âœ“ AI-powered news analysis",
+
+        loginFeature2:
+            "âœ“ Fast and simple verification",
+
+        loginFeature3:
+            "âœ“ Designed for trustworthy information",
+
+        loginWelcome:
+            "Welcome Back ðŸ‘‹",
+
+        loginSubtitle:
+            "Sign in to continue to your account",
+
+        loginNameLabel:
+            "Full Name",
+
+        loginNamePlaceholder:
+            "Enter your full name",
+
+        loginEmailLabel:
+            "Email Address",
+
+        loginEmailPlaceholder:
+            "you@example.com",
+
+        loginPasswordLabel:
+            "Password",
+
+        loginPasswordPlaceholder:
+            "Enter your password",
+
+        loginForgotPassword:
+            "Forgot password?",
+
+        loginRememberMe:
+            "Remember me",
+
+        loginSignIn:
+            "Sign In",
+
+        loginOr:
+            "OR",
+
+        loginGuest:
+            "Continue as Guest",
+
+        loginAgreement:
+            "By continuing, you agree to our",
+
+        loginTerms:
+            "Terms",
+
+        loginAnd:
+            "and",
+
+        loginFooter:
+            "Â© 2026 TruthLens. All rights reserved.",
+
+
+        /* -------------------------
+           NAVIGATION
+        ------------------------- */
+
+        navHome:
+            "Home",
+
+        navSettings:
+            "Settings",
+
+        navLogin:
+            "Login",
+
+navRegister: "Register",
+
+        /* -------------------------
+           SETTINGS
+        ------------------------- */
+
+        settingsTitle:
+            "Settings",
+
+        settingsSubtitle:
+            "Manage your account and preferences",
+
+        profile:
+            "Profile",
+
+        editProfile:
+            "Edit Profile",
+
+        notifications:
+            "Notifications",
+
+        analysisNotifications:
+            "Analysis Notifications",
+
+        analysisDescription:
+            "Receive notifications about your verification results.",
+
+        securityNotifications:
+            "Security Notifications",
+
+        securityDescription:
+            "Receive important security alerts.",
+
+        appearance:
+            "Appearance",
+
+        themeTitle:
+            "Light / Dark Mode",
+
+        themeDescription:
+            "Switch between light and dark mode.",
+
+        languageTitle:
+            "Language",
+
+        languageDescription:
+            "Choose your preferred language.",
+
+        support:
+            "Support & Information",
+
+        helpFaq:
+            "Help & FAQ",
+
+        aboutTruthLens:
+            "About TruthLens",
+
+        privacyPolicy:
+            "Privacy Policy",
+
+
+        /* -------------------------
+           HOME PAGE
+        ------------------------- */
+
+        aiBadge:
+            "ðŸ›¡ï¸ AI-Powered News Verification",
+
+        heroTitle:
+            "See the truth",
+
+        heroTitleSpan:
+            "behind the news.",
+
+        heroDescription:
+            "TruthLens helps you identify potentially misleading or fake news using intelligent analysis.",
+
+        checkNewsLabel:
+            "Check a news article or message",
+
+        newsText:
+            "ðŸ“ News Text",
+
+        newsLink:
+            "ðŸ”— News Link",
+
+        newsTextPlaceholder:
+            "Paste your news article, message, or claim here...",
+
+        newsLinkPlaceholder:
+            "Paste the news article link here...",
+
+        checkNews:
+            "ðŸ” Check News",
+
+        resultPlaceholder:
+            "Your verification result will appear here.",
+
+        footer:
+    "Â© 2026 TruthLens â€¢ Helping you verify before you trust.",
+
+
+/* =====================================================
+   REGISTER PAGE
+===================================================== */
+
+registerIntroTitle:
+    "Welcome to TruthLens",
+
+registerBrandBadge:
+    "Trusted AI Verification",
+
+registerBrandDescription:
+    "Verify information, explore the facts, and stay informed with confidence.",
+
+registerFeature1:
+    "âœ“ AI-powered news analysis",
+
+registerFeature2:
+    "âœ“ Fast and simple verification",
+
+registerFeature3:
+    "âœ“ Designed for trustworthy information",
+
+registerTitle:
+    "Create Account",
+
+registerSubtitle:
+    "Create your TruthLens account",
+
+fullName:
+    "Full Name",
+
+emailAddress:
+    "Email Address",
+
+password:
+    "Password",
+
+confirmPassword:
+    "Confirm Password",
+
+registerButton:
+    "Create Account",
+
+alreadyHaveAccount:
+    "Already have an account?",
+
+login:
+    "Login",
+
+registerFullNamePlaceholder:
+    "Enter your full name",
+
+registerEmailPlaceholder:
+    "you@example.com",
+
+registerPasswordPlaceholder:
+    "Create a password",
+
+registerConfirmPasswordPlaceholder:
+    "Confirm your password",
+
+registerLanguageLabel:
+    "Language"
+
+    },
+
+
+    /* =====================================================
+       HINDI
+    ===================================================== */
+
+    Hindi: {
+
+        /* -------------------------
+           LOGIN PAGE
+        ------------------------- */
+
+        loginBrandBadge:
+            "ðŸ›¡ï¸ à¤µà¤¿à¤¶à¥à¤µà¤¸à¤¨à¥€à¤¯ AI à¤¸à¤¤à¥à¤¯à¤¾à¤ªà¤¨",
+
+        loginBrandTitle:
+            "TruthLens à¤®à¥‡à¤‚ à¤†à¤ªà¤•à¤¾ à¤«à¤¿à¤° à¤¸à¥‡ à¤¸à¥à¤µà¤¾à¤—à¤¤ à¤¹à¥ˆ",
+
+        loginBrandDescription:
+            "à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤¸à¤¤à¥à¤¯à¤¾à¤ªà¤¿à¤¤ à¤•à¤°à¥‡à¤‚, à¤¤à¤¥à¥à¤¯à¥‹à¤‚ à¤•à¥‹ à¤œà¤¾à¤¨à¥‡à¤‚ à¤”à¤° à¤µà¤¿à¤¶à¥à¤µà¤¾à¤¸ à¤•à¥‡ à¤¸à¤¾à¤¥ à¤¸à¥‚à¤šà¤¿à¤¤ à¤°à¤¹à¥‡à¤‚à¥¤",
+
+        loginFeature1:
+            "âœ“ AI-à¤¸à¤‚à¤šà¤¾à¤²à¤¿à¤¤ à¤¸à¤®à¤¾à¤šà¤¾à¤° à¤µà¤¿à¤¶à¥à¤²à¥‡à¤·à¤£",
+
+        loginFeature2:
+            "âœ“ à¤¤à¥‡à¤œà¤¼ à¤”à¤° à¤†à¤¸à¤¾à¤¨ à¤¸à¤¤à¥à¤¯à¤¾à¤ªà¤¨",
+
+        loginFeature3:
+            "âœ“ à¤µà¤¿à¤¶à¥à¤µà¤¸à¤¨à¥€à¤¯ à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤•à¥‡ à¤²à¤¿à¤ à¤¡à¤¿à¤œà¤¼à¤¾à¤‡à¤¨ à¤•à¤¿à¤¯à¤¾ à¤—à¤¯à¤¾",
+
+        loginWelcome:
+            "à¤µà¤¾à¤ªà¤¸à¥€ à¤ªà¤° à¤¸à¥à¤µà¤¾à¤—à¤¤ à¤¹à¥ˆ ðŸ‘‹",
+
+        loginSubtitle:
+            "à¤…à¤ªà¤¨à¥‡ à¤–à¤¾à¤¤à¥‡ à¤®à¥‡à¤‚ à¤œà¤¾à¤°à¥€ à¤°à¤–à¤¨à¥‡ à¤•à¥‡ à¤²à¤¿à¤ à¤¸à¤¾à¤‡à¤¨ à¤‡à¤¨ à¤•à¤°à¥‡à¤‚",
+
+        loginNameLabel:
+            "à¤ªà¥‚à¤°à¤¾ à¤¨à¤¾à¤®",
+
+        loginNamePlaceholder:
+            "à¤…à¤ªà¤¨à¤¾ à¤ªà¥‚à¤°à¤¾ à¤¨à¤¾à¤® à¤¦à¤°à¥à¤œ à¤•à¤°à¥‡à¤‚",
+
+        loginEmailLabel:
+            "à¤ˆà¤®à¥‡à¤² à¤ªà¤¤à¤¾",
+
+        loginEmailPlaceholder:
+            "you@example.com",
+
+        loginPasswordLabel:
+            "à¤ªà¤¾à¤¸à¤µà¤°à¥à¤¡",
+
+        loginPasswordPlaceholder:
+            "à¤…à¤ªà¤¨à¤¾ à¤ªà¤¾à¤¸à¤µà¤°à¥à¤¡ à¤¦à¤°à¥à¤œ à¤•à¤°à¥‡à¤‚",
+
+        loginForgotPassword:
+            "à¤ªà¤¾à¤¸à¤µà¤°à¥à¤¡ à¤­à¥‚à¤² à¤—à¤?",
+
+        loginRememberMe:
+            "à¤®à¥à¤à¥‡ à¤¯à¤¾à¤¦ à¤°à¤–à¥‡à¤‚",
+
+        loginSignIn:
+            "à¤¸à¤¾à¤‡à¤¨ à¤‡à¤¨ à¤•à¤°à¥‡à¤‚",
+
+        loginOr:
+            "à¤¯à¤¾",
+
+        loginGuest:
+            "à¤…à¤¤à¤¿à¤¥à¤¿ à¤•à¥‡ à¤°à¥‚à¤ª à¤®à¥‡à¤‚ à¤œà¤¾à¤°à¥€ à¤°à¤–à¥‡à¤‚",
+
+        loginAgreement:
+            "à¤œà¤¾à¤°à¥€ à¤°à¤–à¤¤à¥‡ à¤¹à¥à¤, à¤†à¤ª à¤¹à¤®à¤¾à¤°à¥€",
+
+        loginTerms:
+            "à¤¶à¤°à¥à¤¤à¥‹à¤‚",
+
+        loginAnd:
+            "à¤”à¤°",
+
+        loginFooter:
+            "Â© 2026 TruthLens. à¤¸à¤°à¥à¤µà¤¾à¤§à¤¿à¤•à¤¾à¤° à¤¸à¥à¤°à¤•à¥à¤·à¤¿à¤¤à¥¤",
+
+
+        /* -------------------------
+           NAVIGATION
+        ------------------------- */
+
+        navHome:
+            "à¤¹à¥‹à¤®",
+
+        navSettings:
+            "à¤¸à¥‡à¤Ÿà¤¿à¤‚à¤—à¥à¤¸",
+
+        navLogin:
+            "à¤²à¥‰à¤—à¤¿à¤¨",
+
+navRegister: "à¤°à¤œà¤¿à¤¸à¥à¤Ÿà¤°",
+
+        /* -------------------------
+           SETTINGS
+        ------------------------- */
+
+        settingsTitle:
+            "à¤¸à¥‡à¤Ÿà¤¿à¤‚à¤—à¥à¤¸",
+
+        settingsSubtitle:
+            "à¤…à¤ªà¤¨à¥‡ à¤–à¤¾à¤¤à¥‡ à¤”à¤° à¤ªà¥à¤°à¤¾à¤¥à¤®à¤¿à¤•à¤¤à¤¾à¤“à¤‚ à¤•à¥‹ à¤ªà¥à¤°à¤¬à¤‚à¤§à¤¿à¤¤ à¤•à¤°à¥‡à¤‚",
+
+        profile:
+            "à¤ªà¥à¤°à¥‹à¤«à¤¼à¤¾à¤‡à¤²",
+
+        editProfile:
+            "à¤ªà¥à¤°à¥‹à¤«à¤¼à¤¾à¤‡à¤² à¤¸à¤‚à¤ªà¤¾à¤¦à¤¿à¤¤ à¤•à¤°à¥‡à¤‚",
+
+        notifications:
+            "à¤¸à¥‚à¤šà¤¨à¤¾à¤à¤‚",
+
+        analysisNotifications:
+            "à¤µà¤¿à¤¶à¥à¤²à¥‡à¤·à¤£ à¤¸à¥‚à¤šà¤¨à¤¾à¤à¤‚",
+
+        analysisDescription:
+            "à¤…à¤ªà¤¨à¥‡ à¤¸à¤¤à¥à¤¯à¤¾à¤ªà¤¨ à¤ªà¤°à¤¿à¤£à¤¾à¤®à¥‹à¤‚ à¤•à¥‡ à¤¬à¤¾à¤°à¥‡ à¤®à¥‡à¤‚ à¤¸à¥‚à¤šà¤¨à¤¾à¤à¤‚ à¤ªà¥à¤°à¤¾à¤ªà¥à¤¤ à¤•à¤°à¥‡à¤‚à¥¤",
+
+        securityNotifications:
+            "à¤¸à¥à¤°à¤•à¥à¤·à¤¾ à¤¸à¥‚à¤šà¤¨à¤¾à¤à¤‚",
+
+        securityDescription:
+            "à¤®à¤¹à¤¤à¥à¤µà¤ªà¥‚à¤°à¥à¤£ à¤¸à¥à¤°à¤•à¥à¤·à¤¾ à¤…à¤²à¤°à¥à¤Ÿ à¤ªà¥à¤°à¤¾à¤ªà¥à¤¤ à¤•à¤°à¥‡à¤‚à¥¤",
+
+        appearance:
+            "à¤¦à¤¿à¤–à¤¾à¤µà¤Ÿ",
+
+        themeTitle:
+            "à¤²à¤¾à¤‡à¤Ÿ / à¤¡à¤¾à¤°à¥à¤• à¤®à¥‹à¤¡",
+
+        themeDescription:
+            "à¤²à¤¾à¤‡à¤Ÿ à¤”à¤° à¤¡à¤¾à¤°à¥à¤• à¤®à¥‹à¤¡ à¤•à¥‡ à¤¬à¥€à¤š à¤¬à¤¦à¤²à¥‡à¤‚à¥¤",
+
+        languageTitle:
+            "à¤­à¤¾à¤·à¤¾",
+
+        languageDescription:
+            "à¤…à¤ªà¤¨à¥€ à¤ªà¤¸à¤‚à¤¦à¥€à¤¦à¤¾ à¤­à¤¾à¤·à¤¾ à¤šà¥à¤¨à¥‡à¤‚à¥¤",
+
+        support:
+            "à¤¸à¤¹à¤¾à¤¯à¤¤à¤¾ à¤”à¤° à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€",
+
+        helpFaq:
+            "à¤¸à¤¹à¤¾à¤¯à¤¤à¤¾ à¤”à¤° à¤¸à¤¾à¤®à¤¾à¤¨à¥à¤¯ à¤ªà¥à¤°à¤¶à¥à¤¨",
+
+        aboutTruthLens:
+            "TruthLens à¤•à¥‡ à¤¬à¤¾à¤°à¥‡ à¤®à¥‡à¤‚",
+
+        privacyPolicy:
+            "à¤—à¥‹à¤ªà¤¨à¥€à¤¯à¤¤à¤¾ à¤¨à¥€à¤¤à¤¿",
+
+
+        /* -------------------------
+           HOME PAGE
+        ------------------------- */
+
+        aiBadge:
+            "ðŸ›¡ï¸ AI-à¤¸à¤‚à¤šà¤¾à¤²à¤¿à¤¤ à¤¸à¤®à¤¾à¤šà¤¾à¤° à¤¸à¤¤à¥à¤¯à¤¾à¤ªà¤¨",
+
+        heroTitle:
+            "à¤¸à¤®à¤¾à¤šà¤¾à¤° à¤•à¥‡",
+
+        heroTitleSpan:
+            "à¤ªà¥€à¤›à¥‡ à¤•à¥€ à¤¸à¤šà¥à¤šà¤¾à¤ˆ à¤¦à¥‡à¤–à¥‡à¤‚à¥¤",
+
+        heroDescription:
+            "TruthLens à¤¬à¥à¤¦à¥à¤§à¤¿à¤®à¤¾à¤¨ à¤µà¤¿à¤¶à¥à¤²à¥‡à¤·à¤£ à¤•à¤¾ à¤‰à¤ªà¤¯à¥‹à¤— à¤•à¤°à¤•à¥‡ à¤¸à¤‚à¤­à¤¾à¤µà¤¿à¤¤ à¤°à¥‚à¤ª à¤¸à¥‡ à¤­à¥à¤°à¤¾à¤®à¤• à¤¯à¤¾ à¤¨à¤•à¤²à¥€ à¤¸à¤®à¤¾à¤šà¤¾à¤°à¥‹à¤‚ à¤•à¥€ à¤ªà¤¹à¤šà¤¾à¤¨ à¤•à¤°à¤¨à¥‡ à¤®à¥‡à¤‚ à¤†à¤ªà¤•à¥€ à¤¸à¤¹à¤¾à¤¯à¤¤à¤¾ à¤•à¤°à¤¤à¤¾ à¤¹à¥ˆà¥¤",
+
+        checkNewsLabel:
+            "à¤¸à¤®à¤¾à¤šà¤¾à¤° à¤²à¥‡à¤– à¤¯à¤¾ à¤¸à¤‚à¤¦à¥‡à¤¶ à¤•à¥€ à¤œà¤¾à¤‚à¤š à¤•à¤°à¥‡à¤‚",
+
+        newsText:
+            "ðŸ“ à¤¸à¤®à¤¾à¤šà¤¾à¤° à¤Ÿà¥‡à¤•à¥à¤¸à¥à¤Ÿ",
+
+        newsLink:
+            "ðŸ”— à¤¸à¤®à¤¾à¤šà¤¾à¤° à¤²à¤¿à¤‚à¤•",
+
+        newsTextPlaceholder:
+            "à¤…à¤ªà¤¨à¤¾ à¤¸à¤®à¤¾à¤šà¤¾à¤° à¤²à¥‡à¤–, à¤¸à¤‚à¤¦à¥‡à¤¶ à¤¯à¤¾ à¤¦à¤¾à¤µà¤¾ à¤¯à¤¹à¤¾à¤‚ à¤ªà¥‡à¤¸à¥à¤Ÿ à¤•à¤°à¥‡à¤‚...",
+
+        newsLinkPlaceholder:
+            "à¤¸à¤®à¤¾à¤šà¤¾à¤° à¤²à¥‡à¤– à¤•à¤¾ à¤²à¤¿à¤‚à¤• à¤¯à¤¹à¤¾à¤‚ à¤ªà¥‡à¤¸à¥à¤Ÿ à¤•à¤°à¥‡à¤‚...",
+
+        checkNews:
+            "ðŸ” à¤¸à¤®à¤¾à¤šà¤¾à¤° à¤œà¤¾à¤‚à¤šà¥‡à¤‚",
+
+        resultPlaceholder:
+            "à¤†à¤ªà¤•à¤¾ à¤¸à¤¤à¥à¤¯à¤¾à¤ªà¤¨ à¤ªà¤°à¤¿à¤£à¤¾à¤® à¤¯à¤¹à¤¾à¤‚ à¤¦à¤¿à¤–à¤¾à¤ˆ à¤¦à¥‡à¤—à¤¾à¥¤",
+
+        footer:
+    "Â© 2026 TruthLens â€¢ à¤­à¤°à¥‹à¤¸à¤¾ à¤•à¤°à¤¨à¥‡ à¤¸à¥‡ à¤ªà¤¹à¤²à¥‡ à¤¸à¤¤à¥à¤¯à¤¾à¤ªà¤¿à¤¤ à¤•à¤°à¥‡à¤‚ã€‚",
+
+
+/* =====================================================
+   REGISTER PAGE
+===================================================== */
+
+registerIntroTitle:
+    "TruthLens à¤®à¥‡à¤‚ à¤†à¤ªà¤•à¤¾ à¤¸à¥à¤µà¤¾à¤—à¤¤ à¤¹à¥ˆ",
+
+registerBrandBadge:
+    "à¤µà¤¿à¤¶à¥à¤µà¤¸à¤¨à¥€à¤¯ AI à¤¸à¤¤à¥à¤¯à¤¾à¤ªà¤¨",
+
+registerBrandDescription:
+    "à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤¸à¤¤à¥à¤¯à¤¾à¤ªà¤¿à¤¤ à¤•à¤°à¥‡à¤‚, à¤¤à¤¥à¥à¤¯à¥‹à¤‚ à¤•à¥‹ à¤œà¤¾à¤¨à¥‡à¤‚ à¤”à¤° à¤µà¤¿à¤¶à¥à¤µà¤¾à¤¸ à¤•à¥‡ à¤¸à¤¾à¤¥ à¤¸à¥‚à¤šà¤¿à¤¤ à¤°à¤¹à¥‡à¤‚à¥¤",
+
+registerFeature1:
+    "âœ“ AI-à¤¸à¤‚à¤šà¤¾à¤²à¤¿à¤¤ à¤¸à¤®à¤¾à¤šà¤¾à¤° à¤µà¤¿à¤¶à¥à¤²à¥‡à¤·à¤£",
+
+registerFeature2:
+    "âœ“ à¤¤à¥‡à¤œà¤¼ à¤”à¤° à¤†à¤¸à¤¾à¤¨ à¤¸à¤¤à¥à¤¯à¤¾à¤ªà¤¨",
+
+registerFeature3:
+    "âœ“ à¤µà¤¿à¤¶à¥à¤µà¤¸à¤¨à¥€à¤¯ à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤•à¥‡ à¤²à¤¿à¤ à¤¡à¤¿à¤œà¤¼à¤¾à¤‡à¤¨ à¤•à¤¿à¤¯à¤¾ à¤—à¤¯à¤¾",
+
+registerTitle:
+    "à¤–à¤¾à¤¤à¤¾ à¤¬à¤¨à¤¾à¤à¤",
+
+registerSubtitle:
+    "à¤…à¤ªà¤¨à¤¾ TruthLens à¤–à¤¾à¤¤à¤¾ à¤¬à¤¨à¤¾à¤à¤",
+
+fullName:
+    "à¤ªà¥‚à¤°à¤¾ à¤¨à¤¾à¤®",
+
+emailAddress:
+    "à¤ˆà¤®à¥‡à¤² à¤ªà¤¤à¤¾",
+
+password:
+    "à¤ªà¤¾à¤¸à¤µà¤°à¥à¤¡",
+
+confirmPassword:
+    "à¤ªà¤¾à¤¸à¤µà¤°à¥à¤¡ à¤•à¥€ à¤ªà¥à¤·à¥à¤Ÿà¤¿ à¤•à¤°à¥‡à¤‚",
+
+registerButton:
+    "à¤–à¤¾à¤¤à¤¾ à¤¬à¤¨à¤¾à¤à¤",
+
+alreadyHaveAccount:
+    "à¤•à¥à¤¯à¤¾ à¤†à¤ªà¤•à¥‡ à¤ªà¤¾à¤¸ à¤ªà¤¹à¤²à¥‡ à¤¸à¥‡ à¤–à¤¾à¤¤à¤¾ à¤¹à¥ˆ?",
+
+login:
+    "à¤²à¥‰à¤—à¤¿à¤¨",
+
+registerFullNamePlaceholder:
+    "à¤…à¤ªà¤¨à¤¾ à¤ªà¥‚à¤°à¤¾ à¤¨à¤¾à¤® à¤¦à¤°à¥à¤œ à¤•à¤°à¥‡à¤‚",
+
+registerEmailPlaceholder:
+    "you@example.com",
+
+registerPasswordPlaceholder:
+    "à¤ªà¤¾à¤¸à¤µà¤°à¥à¤¡ à¤¬à¤¨à¤¾à¤à¤",
+
+registerConfirmPasswordPlaceholder:
+    "à¤…à¤ªà¤¨à¤¾ à¤ªà¤¾à¤¸à¤µà¤°à¥à¤¡ à¤¦à¥‹à¤¬à¤¾à¤°à¤¾ à¤¦à¤°à¥à¤œ à¤•à¤°à¥‡à¤‚",
+
+registerLanguageLabel:
+    "à¤­à¤¾à¤·à¤¾"
+
+    },
+
+
+    /* =====================================================
+       BENGALI
+    ===================================================== */
+
+    Bengali: {
+
+        /* -------------------------
+           LOGIN PAGE
+        ------------------------- */
+
+        loginBrandBadge:
+            "ðŸ›¡ï¸ à¦¬à¦¿à¦¶à§à¦¬à¦¸à§à¦¤ AI à¦¯à¦¾à¦šà¦¾à¦‡à¦•à¦°à¦£",
+
+        loginBrandTitle:
+            "TruthLens-à¦ à¦†à¦ªà¦¨à¦¾à¦•à§‡ à¦†à¦¬à¦¾à¦° à¦¸à§à¦¬à¦¾à¦—à¦¤à¦®",
+
+        loginBrandDescription:
+            "à¦¤à¦¥à§à¦¯ à¦¯à¦¾à¦šà¦¾à¦‡ à¦•à¦°à§à¦¨, à¦¤à¦¥à§à¦¯ à¦…à¦¨à§à¦¸à¦¨à§à¦§à¦¾à¦¨ à¦•à¦°à§à¦¨ à¦à¦¬à¦‚ à¦†à¦¤à§à¦®à¦¬à¦¿à¦¶à§à¦¬à¦¾à¦¸à§‡à¦° à¦¸à¦¾à¦¥à§‡ à¦…à¦¬à¦—à¦¤ à¦¥à¦¾à¦•à§à¦¨à¥¤",
+
+        loginFeature1:
+            "âœ“ AI-à¦šà¦¾à¦²à¦¿à¦¤ à¦¸à¦‚à¦¬à¦¾à¦¦ à¦¬à¦¿à¦¶à§à¦²à§‡à¦·à¦£",
+
+        loginFeature2:
+            "âœ“ à¦¦à§à¦°à§à¦¤ à¦à¦¬à¦‚ à¦¸à¦¹à¦œ à¦¯à¦¾à¦šà¦¾à¦‡à¦•à¦°à¦£",
+
+        loginFeature3:
+            "âœ“ à¦¬à¦¿à¦¶à§à¦¬à¦¸à§à¦¤ à¦¤à¦¥à§à¦¯à§‡à¦° à¦œà¦¨à§à¦¯ à¦¡à¦¿à¦œà¦¾à¦‡à¦¨ à¦•à¦°à¦¾",
+
+        loginWelcome:
+            "à¦†à¦¬à¦¾à¦° à¦¸à§à¦¬à¦¾à¦—à¦¤à¦® ðŸ‘‹",
+
+        loginSubtitle:
+            "à¦†à¦ªà¦¨à¦¾à¦° à¦…à§à¦¯à¦¾à¦•à¦¾à¦‰à¦¨à§à¦Ÿà§‡ à¦šà¦¾à¦²à¦¿à¦¯à¦¼à§‡ à¦¯à§‡à¦¤à§‡ à¦¸à¦¾à¦‡à¦¨ à¦‡à¦¨ à¦•à¦°à§à¦¨",
+
+        loginNameLabel:
+            "à¦ªà§à¦°à§‹ à¦¨à¦¾à¦®",
+
+        loginNamePlaceholder:
+            "à¦†à¦ªà¦¨à¦¾à¦° à¦ªà§à¦°à§‹ à¦¨à¦¾à¦® à¦²à¦¿à¦–à§à¦¨",
+
+        loginEmailLabel:
+            "à¦‡à¦®à§‡à¦² à¦ à¦¿à¦•à¦¾à¦¨à¦¾",
+
+        loginEmailPlaceholder:
+            "you@example.com",
+
+        loginPasswordLabel:
+            "à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡",
+
+        loginPasswordPlaceholder:
+            "à¦†à¦ªà¦¨à¦¾à¦° à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦²à¦¿à¦–à§à¦¨",
+
+        loginForgotPassword:
+            "à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦­à§à¦²à§‡ à¦—à§‡à¦›à§‡à¦¨?",
+
+        loginRememberMe:
+            "à¦†à¦®à¦¾à¦•à§‡ à¦®à¦¨à§‡ à¦°à¦¾à¦–à§à¦¨",
+
+        loginSignIn:
+            "à¦¸à¦¾à¦‡à¦¨ à¦‡à¦¨ à¦•à¦°à§à¦¨",
+
+        loginOr:
+            "à¦…à¦¥à¦¬à¦¾",
+
+        loginGuest:
+            "à¦…à¦¤à¦¿à¦¥à¦¿ à¦¹à¦¿à¦¸à§‡à¦¬à§‡ à¦šà¦¾à¦²à¦¿à¦¯à¦¼à§‡ à¦¯à¦¾à¦¨",
+
+        loginAgreement:
+            "à¦šà¦¾à¦²à¦¿à¦¯à¦¼à§‡ à¦¯à¦¾à¦“à¦¯à¦¼à¦¾à¦° à¦®à¦¾à¦§à§à¦¯à¦®à§‡ à¦†à¦ªà¦¨à¦¿ à¦†à¦®à¦¾à¦¦à§‡à¦°",
+
+        loginTerms:
+            "à¦¶à¦°à§à¦¤à¦¾à¦¬à¦²à§€à¦¤à§‡",
+
+        loginAnd:
+            "à¦à¦¬à¦‚",
+
+        loginFooter:
+            "Â© 2026 TruthLens. à¦¸à¦°à§à¦¬à¦¸à§à¦¬à¦¤à§à¦¬ à¦¸à¦‚à¦°à¦•à§à¦·à¦¿à¦¤à¥¤",
+
+
+        /* -------------------------
+           NAVIGATION
+        ------------------------- */
+
+        navHome:
+            "à¦¹à§‹à¦®",
+
+        navSettings:
+            "à¦¸à§‡à¦Ÿà¦¿à¦‚à¦¸",
+
+        navLogin:
+            "à¦²à¦—à¦‡à¦¨",
+
+navRegister: "à¦°à§‡à¦œà¦¿à¦¸à§à¦Ÿà¦¾à¦°",
+
+        /* -------------------------
+           SETTINGS
+        ------------------------- */
+
+        settingsTitle:
+            "à¦¸à§‡à¦Ÿà¦¿à¦‚à¦¸",
+
+        settingsSubtitle:
+            "à¦†à¦ªà¦¨à¦¾à¦° à¦…à§à¦¯à¦¾à¦•à¦¾à¦‰à¦¨à§à¦Ÿ à¦à¦¬à¦‚ à¦ªà¦›à¦¨à§à¦¦à¦—à§à¦²à¦¿ à¦ªà¦°à¦¿à¦šà¦¾à¦²à¦¨à¦¾ à¦•à¦°à§à¦¨",
+
+        profile:
+            "à¦ªà§à¦°à§‹à¦«à¦¾à¦‡à¦²",
+
+        editProfile:
+            "à¦ªà§à¦°à§‹à¦«à¦¾à¦‡à¦² à¦¸à¦®à§à¦ªà¦¾à¦¦à¦¨à¦¾ à¦•à¦°à§à¦¨",
+
+        notifications:
+            "à¦¬à¦¿à¦œà§à¦žà¦ªà§à¦¤à¦¿",
+
+        analysisNotifications:
+            "à¦¬à¦¿à¦¶à§à¦²à§‡à¦·à¦£ à¦¬à¦¿à¦œà§à¦žà¦ªà§à¦¤à¦¿",
+
+        analysisDescription:
+            "à¦†à¦ªà¦¨à¦¾à¦° à¦¯à¦¾à¦šà¦¾à¦‡à¦¯à¦¼à§‡à¦° à¦«à¦²à¦¾à¦«à¦² à¦¸à¦®à§à¦ªà¦°à§à¦•à§‡ à¦¬à¦¿à¦œà§à¦žà¦ªà§à¦¤à¦¿ à¦ªà¦¾à¦¨à¥¤",
+
+        securityNotifications:
+            "à¦¨à¦¿à¦°à¦¾à¦ªà¦¤à§à¦¤à¦¾ à¦¬à¦¿à¦œà§à¦žà¦ªà§à¦¤à¦¿",
+
+        securityDescription:
+            "à¦—à§à¦°à§à¦¤à§à¦¬à¦ªà§‚à¦°à§à¦£ à¦¨à¦¿à¦°à¦¾à¦ªà¦¤à§à¦¤à¦¾ à¦¸à¦¤à¦°à§à¦•à¦¤à¦¾ à¦ªà¦¾à¦¨à¥¤",
+
+        appearance:
+            "à¦šà§‡à¦¹à¦¾à¦°à¦¾",
+
+        themeTitle:
+            "à¦²à¦¾à¦‡à¦Ÿ / à¦¡à¦¾à¦°à§à¦• à¦®à§‹à¦¡",
+
+        themeDescription:
+            "à¦²à¦¾à¦‡à¦Ÿ à¦à¦¬à¦‚ à¦¡à¦¾à¦°à§à¦• à¦®à§‹à¦¡à§‡à¦° à¦®à¦§à§à¦¯à§‡ à¦ªà¦°à¦¿à¦¬à¦°à§à¦¤à¦¨ à¦•à¦°à§à¦¨à¥¤",
+
+        languageTitle:
+            "à¦­à¦¾à¦·à¦¾",
+
+        languageDescription:
+            "à¦†à¦ªà¦¨à¦¾à¦° à¦ªà¦›à¦¨à§à¦¦à§‡à¦° à¦­à¦¾à¦·à¦¾ à¦¨à¦¿à¦°à§à¦¬à¦¾à¦šà¦¨ à¦•à¦°à§à¦¨à¥¤",
+
+        support:
+            "à¦¸à¦¹à¦¾à¦¯à¦¼à¦¤à¦¾ à¦“ à¦¤à¦¥à§à¦¯",
+
+        helpFaq:
+            "à¦¸à¦¹à¦¾à¦¯à¦¼à¦¤à¦¾ à¦“ à¦¸à¦¾à¦§à¦¾à¦°à¦£ à¦ªà§à¦°à¦¶à§à¦¨",
+
+        aboutTruthLens:
+            "TruthLens à¦¸à¦®à§à¦ªà¦°à§à¦•à§‡",
+
+        privacyPolicy:
+            "à¦—à§‹à¦ªà¦¨à§€à¦¯à¦¼à¦¤à¦¾ à¦¨à§€à¦¤à¦¿",
+
+
+        /* -------------------------
+           HOME PAGE
+        ------------------------- */
+
+        aiBadge:
+            "ðŸ›¡ï¸ AI-à¦šà¦¾à¦²à¦¿à¦¤ à¦¸à¦‚à¦¬à¦¾à¦¦ à¦¯à¦¾à¦šà¦¾à¦‡à¦•à¦°à¦£",
+
+        heroTitle:
+            "à¦¸à¦‚à¦¬à¦¾à¦¦à§‡à¦°",
+
+        heroTitleSpan:
+            "à¦ªà§‡à¦›à¦¨à§‡à¦° à¦¸à¦¤à§à¦¯à¦Ÿà¦¿ à¦¦à§‡à¦–à§à¦¨à¥¤",
+
+        heroDescription:
+            "TruthLens à¦¬à§à¦¦à§à¦§à¦¿à¦®à¦¾à¦¨ à¦¬à¦¿à¦¶à§à¦²à§‡à¦·à¦£à§‡à¦° à¦®à¦¾à¦§à§à¦¯à¦®à§‡ à¦¸à¦®à§à¦­à¦¾à¦¬à§à¦¯ à¦¬à¦¿à¦­à§à¦°à¦¾à¦¨à§à¦¤à¦¿à¦•à¦° à¦¬à¦¾ à¦­à§à¦¯à¦¼à¦¾ à¦¸à¦‚à¦¬à¦¾à¦¦ à¦¶à¦¨à¦¾à¦•à§à¦¤ à¦•à¦°à¦¤à§‡ à¦¸à¦¾à¦¹à¦¾à¦¯à§à¦¯ à¦•à¦°à§‡à¥¤",
+
+        checkNewsLabel:
+            "à¦à¦•à¦Ÿà¦¿ à¦¸à¦‚à¦¬à¦¾à¦¦ à¦¨à¦¿à¦¬à¦¨à§à¦§ à¦¬à¦¾ à¦¬à¦¾à¦°à§à¦¤à¦¾ à¦¯à¦¾à¦šà¦¾à¦‡ à¦•à¦°à§à¦¨",
+
+        newsText:
+            "ðŸ“ à¦¸à¦‚à¦¬à¦¾à¦¦ à¦Ÿà§‡à¦•à§à¦¸à¦Ÿ",
+
+        newsLink:
+            "ðŸ”— à¦¸à¦‚à¦¬à¦¾à¦¦ à¦²à¦¿à¦‚à¦•",
+
+        newsTextPlaceholder:
+            "à¦†à¦ªà¦¨à¦¾à¦° à¦¸à¦‚à¦¬à¦¾à¦¦ à¦¨à¦¿à¦¬à¦¨à§à¦§, à¦¬à¦¾à¦°à§à¦¤à¦¾ à¦¬à¦¾ à¦¦à¦¾à¦¬à¦¿ à¦à¦–à¦¾à¦¨à§‡ à¦ªà§‡à¦¸à§à¦Ÿ à¦•à¦°à§à¦¨...",
+
+        newsLinkPlaceholder:
+            "à¦¸à¦‚à¦¬à¦¾à¦¦ à¦¨à¦¿à¦¬à¦¨à§à¦§à§‡à¦° à¦²à¦¿à¦‚à¦• à¦à¦–à¦¾à¦¨à§‡ à¦ªà§‡à¦¸à§à¦Ÿ à¦•à¦°à§à¦¨...",
+
+        checkNews:
+            "ðŸ” à¦¸à¦‚à¦¬à¦¾à¦¦ à¦¯à¦¾à¦šà¦¾à¦‡ à¦•à¦°à§à¦¨",
+
+        resultPlaceholder:
+            "à¦†à¦ªà¦¨à¦¾à¦° à¦¯à¦¾à¦šà¦¾à¦‡à¦¯à¦¼à§‡à¦° à¦«à¦²à¦¾à¦«à¦² à¦à¦–à¦¾à¦¨à§‡ à¦ªà§à¦°à¦¦à¦°à§à¦¶à¦¿à¦¤ à¦¹à¦¬à§‡à¥¤",
+
+        footer:
+    "Â© 2026 TruthLens â€¢ à¦¬à¦¿à¦¶à§à¦¬à¦¾à¦¸ à¦•à¦°à¦¾à¦° à¦†à¦—à§‡ à¦¯à¦¾à¦šà¦¾à¦‡ à¦•à¦°à¦¤à§‡ à¦¸à¦¹à¦¾à¦¯à¦¼à¦¤à¦¾ à¦•à¦°à§‡à¥¤",
+
+
+/* =====================================================
+   REGISTER PAGE
+===================================================== */
+
+registerIntroTitle:
+    "TruthLens-à¦ à¦†à¦ªà¦¨à¦¾à¦•à§‡ à¦¸à§à¦¬à¦¾à¦—à¦¤à¦®",
+
+registerBrandBadge:
+    "à¦¬à¦¿à¦¶à§à¦¬à¦¸à§à¦¤ AI à¦¯à¦¾à¦šà¦¾à¦‡à¦•à¦°à¦£",
+
+registerBrandDescription:
+    "à¦¤à¦¥à§à¦¯ à¦¯à¦¾à¦šà¦¾à¦‡ à¦•à¦°à§à¦¨, à¦¤à¦¥à§à¦¯ à¦…à¦¨à§à¦¸à¦¨à§à¦§à¦¾à¦¨ à¦•à¦°à§à¦¨ à¦à¦¬à¦‚ à¦†à¦¤à§à¦®à¦¬à¦¿à¦¶à§à¦¬à¦¾à¦¸à§‡à¦° à¦¸à¦¾à¦¥à§‡ à¦…à¦¬à¦—à¦¤ à¦¥à¦¾à¦•à§à¦¨à¥¤",
+
+registerFeature1:
+    "âœ“ AI-à¦šà¦¾à¦²à¦¿à¦¤ à¦¸à¦‚à¦¬à¦¾à¦¦ à¦¬à¦¿à¦¶à§à¦²à§‡à¦·à¦£",
+
+registerFeature2:
+    "âœ“ à¦¦à§à¦°à§à¦¤ à¦à¦¬à¦‚ à¦¸à¦¹à¦œ à¦¯à¦¾à¦šà¦¾à¦‡à¦•à¦°à¦£",
+
+registerFeature3:
+    "âœ“ à¦¬à¦¿à¦¶à§à¦¬à¦¸à§à¦¤ à¦¤à¦¥à§à¦¯à§‡à¦° à¦œà¦¨à§à¦¯ à¦¡à¦¿à¦œà¦¾à¦‡à¦¨ à¦•à¦°à¦¾",
+
+registerTitle:
+    "à¦…à§à¦¯à¦¾à¦•à¦¾à¦‰à¦¨à§à¦Ÿ à¦¤à§ˆà¦°à¦¿ à¦•à¦°à§à¦¨",
+
+registerSubtitle:
+    "à¦†à¦ªà¦¨à¦¾à¦° TruthLens à¦…à§à¦¯à¦¾à¦•à¦¾à¦‰à¦¨à§à¦Ÿ à¦¤à§ˆà¦°à¦¿ à¦•à¦°à§à¦¨",
+
+fullName:
+    "à¦ªà§à¦°à§‹ à¦¨à¦¾à¦®",
+
+emailAddress:
+    "à¦‡à¦®à§‡à¦² à¦ à¦¿à¦•à¦¾à¦¨à¦¾",
+
+password:
+    "à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡",
+
+confirmPassword:
+    "à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦¨à¦¿à¦¶à§à¦šà¦¿à¦¤ à¦•à¦°à§à¦¨",
+
+registerButton:
+    "à¦…à§à¦¯à¦¾à¦•à¦¾à¦‰à¦¨à§à¦Ÿ à¦¤à§ˆà¦°à¦¿ à¦•à¦°à§à¦¨",
+
+alreadyHaveAccount:
+    "à¦‡à¦¤à¦¿à¦®à¦§à§à¦¯à§‡ à¦à¦•à¦Ÿà¦¿ à¦…à§à¦¯à¦¾à¦•à¦¾à¦‰à¦¨à§à¦Ÿ à¦†à¦›à§‡?",
+
+login:
+    "à¦²à¦—à¦‡à¦¨",
+
+registerFullNamePlaceholder:
+    "à¦†à¦ªà¦¨à¦¾à¦° à¦ªà§à¦°à§‹ à¦¨à¦¾à¦® à¦²à¦¿à¦–à§à¦¨",
+
+registerEmailPlaceholder:
+    "you@example.com",
+
+registerPasswordPlaceholder:
+    "à¦à¦•à¦Ÿà¦¿ à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦¤à§ˆà¦°à¦¿ à¦•à¦°à§à¦¨",
+
+registerConfirmPasswordPlaceholder:
+    "à¦†à¦ªà¦¨à¦¾à¦° à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦¨à¦¿à¦¶à§à¦šà¦¿à¦¤ à¦•à¦°à§à¦¨",
+
+registerLanguageLabel:
+    "à¦­à¦¾à¦·à¦¾"
+
+    },
+
+
+};
+
+
+/* =========================================================
+   SUPPORT TRANSLATIONS
+========================================================= */
+
+const supportTranslations = {
+
+    English: {
+
+        help: {
+
+            title:
+                "Help & FAQ",
+
+            intro:
+                "Find answers to common questions about TruthLens.",
+
+            items: [
+
+                [
+                    "What is TruthLens?",
+                    "TruthLens is an AI-powered news verification tool that analyzes news text and links and provides a model-based classification."
+                ],
+
+                [
+                    "How do I check a news article?",
+                    "Go to the Home page, choose News Text or News Link, enter the information, and click Check News."
+                ],
+
+                [
+                    "Is the result always correct?",
+                    "No. TruthLens provides an AI/ML classification and should not be treated as absolute proof of whether information is true or false."
+                ],
+
+                [
+                    "Can I change my profile information?",
+                    "Yes. Use Edit Profile in the Settings page to update your name and email information."
+                ],
+
+                [
+                    "Can I use TruthLens as a guest?",
+                    "Yes. Select Continue as Guest on the Login page to use TruthLens without signing in."
+                ]
+
+            ]
+
+        },
+
+
+        about: {
+
+            title:
+                "About TruthLens",
+
+            intro:
+                "TruthLens is designed to help users examine news before trusting or sharing it.",
+
+            items: [
+
+                [
+                    "What technology does TruthLens use?",
+                    "TruthLens uses a web frontend, a FastAPI backend and a machine-learning news classification system."
+                ],
+
+                [
+                    "Can TruthLens be wrong?",
+                    "Yes. The system may provide incorrect or uncertain classifications. Important information should always be independently verified."
+                ],
+
+                [
+                    "What is the goal of TruthLens?",
+                    "The goal is to make information checking simple, accessible, and easy to understand."
+                ],
+
+                [
+                    "Version",
+                    "TruthLens â€¢ 2026"
+                ]
+
+            ]
+
+        },
+
+
+        privacy: {
+
+            title:
+                "Privacy Policy",
+
+            intro:
+                "This section explains how the current TruthLens application handles information.",
+
+            items: [
+
+                [
+                    "Does TruthLens store my news text?",
+                    "The current frontend sends submitted content to the configured TruthLens backend for analysis. Browser local storage is used for selected application preferences."
+                ],
+
+                [
+                    "What is stored in my browser?",
+                    "Theme, language, notification preferences, notification history and demo profile information may be stored in localStorage."
+                ],
+
+                [
+                    "Is my login a real account?",
+                    "The current login is a frontend demonstration. User profile information is stored locally in the browser and is not a complete server-side authentication system."
+                ],
+
+                [
+                    "Does TruthLens use browser notifications?",
+                    "If notifications are enabled and browser permission is granted, TruthLens can show browser notifications after analysis or security events."
+                ],
+
+                [
+                    "Important Notice",
+                    "TruthLens provides machine-learning based analysis. Results should not be considered absolute proof of whether information is true or false."
+                ],
+
+                [
+                    "Privacy Updates",
+                    "This privacy information may be updated as TruthLens develops new features and functionality."
+                ]
+
+            ]
+
+        }
+
+    },
+
+
+    Hindi: {
+
+        help: {
+
+            title:
+                "à¤¸à¤¹à¤¾à¤¯à¤¤à¤¾ à¤”à¤° à¤¸à¤¾à¤®à¤¾à¤¨à¥à¤¯ à¤ªà¥à¤°à¤¶à¥à¤¨",
+
+            intro:
+                "TruthLens à¤•à¥‡ à¤¬à¤¾à¤°à¥‡ à¤®à¥‡à¤‚ à¤¸à¤¾à¤®à¤¾à¤¨à¥à¤¯ à¤ªà¥à¤°à¤¶à¥à¤¨à¥‹à¤‚ à¤•à¥‡ à¤‰à¤¤à¥à¤¤à¤° à¤¯à¤¹à¤¾à¤‚ à¤¦à¥‡à¤–à¥‡à¤‚à¥¤",
+
+            items: [
+
+                [
+                    "TruthLens à¤•à¥à¤¯à¤¾ à¤¹à¥ˆ?",
+                    "TruthLens à¤à¤• AI-powered news verification tool à¤¹à¥ˆ à¤œà¥‹ à¤¸à¤®à¤¾à¤šà¤¾à¤° à¤Ÿà¥‡à¤•à¥à¤¸à¥à¤Ÿ à¤”à¤° à¤²à¤¿à¤‚à¤• à¤•à¤¾ à¤µà¤¿à¤¶à¥à¤²à¥‡à¤·à¤£ à¤•à¤°à¤•à¥‡ model-based classification à¤ªà¥à¤°à¤¦à¤¾à¤¨ à¤•à¤°à¤¤à¤¾ à¤¹à¥ˆà¥¤"
+                ],
+
+                [
+                    "à¤®à¥ˆà¤‚ à¤•à¤¿à¤¸à¥€ à¤¸à¤®à¤¾à¤šà¤¾à¤° à¤²à¥‡à¤– à¤•à¥€ à¤œà¤¾à¤‚à¤š à¤•à¥ˆà¤¸à¥‡ à¤•à¤° à¤¸à¤•à¤¤à¤¾ à¤¹à¥‚à¤‚?",
+                    "Home à¤ªà¥‡à¤œ à¤ªà¤° à¤œà¤¾à¤à¤‚, News Text à¤¯à¤¾ News Link à¤šà¥à¤¨à¥‡à¤‚, à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤¦à¤°à¥à¤œ à¤•à¤°à¥‡à¤‚ à¤”à¤° Check News à¤ªà¤° à¤•à¥à¤²à¤¿à¤• à¤•à¤°à¥‡à¤‚à¥¤"
+                ],
+
+                [
+                    "à¤•à¥à¤¯à¤¾ à¤ªà¤°à¤¿à¤£à¤¾à¤® à¤¹à¤®à¥‡à¤¶à¤¾ à¤¸à¤¹à¥€ à¤¹à¥‹à¤¤à¤¾ à¤¹à¥ˆ?",
+                    "à¤¨à¤¹à¥€à¤‚à¥¤ TruthLens AI/ML classification à¤ªà¥à¤°à¤¦à¤¾à¤¨ à¤•à¤°à¤¤à¤¾ à¤¹à¥ˆ à¤”à¤° à¤‡à¤¸à¥‡ à¤•à¤¿à¤¸à¥€ à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤•à¥‡ à¤¸à¤¹à¥€ à¤¯à¤¾ à¤—à¤²à¤¤ à¤¹à¥‹à¤¨à¥‡ à¤•à¤¾ à¤ªà¥‚à¤°à¥à¤£ à¤ªà¥à¤°à¤®à¤¾à¤£ à¤¨à¤¹à¥€à¤‚ à¤®à¤¾à¤¨à¤¾ à¤œà¤¾à¤¨à¤¾ à¤šà¤¾à¤¹à¤¿à¤à¥¤"
+                ],
+
+                [
+                    "à¤•à¥à¤¯à¤¾ à¤®à¥ˆà¤‚ à¤…à¤ªà¤¨à¥€ profile information à¤¬à¤¦à¤² à¤¸à¤•à¤¤à¤¾ à¤¹à¥‚à¤‚?",
+                    "à¤¹à¤¾à¤‚à¥¤ Settings à¤ªà¥‡à¤œ à¤®à¥‡à¤‚ Edit Profile à¤•à¤¾ à¤‰à¤ªà¤¯à¥‹à¤— à¤•à¤°à¤•à¥‡ à¤…à¤ªà¤¨à¤¾ à¤¨à¤¾à¤® à¤”à¤° email information à¤…à¤ªà¤¡à¥‡à¤Ÿ à¤•à¤° à¤¸à¤•à¤¤à¥‡ à¤¹à¥ˆà¤‚à¥¤"
+                ],
+
+                [
+                    "à¤•à¥à¤¯à¤¾ à¤®à¥ˆà¤‚ TruthLens à¤•à¥‹ Guest à¤•à¥‡ à¤°à¥‚à¤ª à¤®à¥‡à¤‚ à¤‰à¤ªà¤¯à¥‹à¤— à¤•à¤° à¤¸à¤•à¤¤à¤¾ à¤¹à¥‚à¤‚?",
+                    "à¤¹à¤¾à¤‚à¥¤ Login à¤ªà¥‡à¤œ à¤ªà¤° Continue as Guest à¤šà¥à¤¨à¤•à¤° à¤†à¤ª à¤¬à¤¿à¤¨à¤¾ sign in à¤•à¤¿à¤ TruthLens à¤•à¤¾ à¤‰à¤ªà¤¯à¥‹à¤— à¤•à¤° à¤¸à¤•à¤¤à¥‡ à¤¹à¥ˆà¤‚à¥¤"
+                ]
+
+            ]
+
+        },
+
+
+        about: {
+
+            title:
+                "TruthLens à¤•à¥‡ à¤¬à¤¾à¤°à¥‡ à¤®à¥‡à¤‚",
+
+            intro:
+                "TruthLens à¤•à¥‹ à¤¸à¤®à¤¾à¤šà¤¾à¤° à¤ªà¤° à¤­à¤°à¥‹à¤¸à¤¾ à¤•à¤°à¤¨à¥‡ à¤¯à¤¾ à¤‰à¤¸à¥‡ à¤¸à¤¾à¤à¤¾ à¤•à¤°à¤¨à¥‡ à¤¸à¥‡ à¤ªà¤¹à¤²à¥‡ à¤œà¤¾à¤‚à¤š à¤®à¥‡à¤‚ à¤¸à¤¹à¤¾à¤¯à¤¤à¤¾ à¤•à¤°à¤¨à¥‡ à¤•à¥‡ à¤²à¤¿à¤ à¤¬à¤¨à¤¾à¤¯à¤¾ à¤—à¤¯à¤¾ à¤¹à¥ˆà¥¤",
+
+            items: [
+
+                [
+                    "TruthLens à¤•à¤¿à¤¸ à¤¤à¤•à¤¨à¥€à¤• à¤•à¤¾ à¤‰à¤ªà¤¯à¥‹à¤— à¤•à¤°à¤¤à¤¾ à¤¹à¥ˆ?",
+                    "TruthLens à¤µà¥‡à¤¬ à¤«à¥à¤°à¤‚à¤Ÿà¤à¤‚à¤¡, FastAPI à¤¬à¥ˆà¤•à¤à¤‚à¤¡ à¤”à¤° à¤®à¤¶à¥€à¤¨ à¤²à¤°à¥à¤¨à¤¿à¤‚à¤— à¤†à¤§à¤¾à¤°à¤¿à¤¤ à¤¸à¤®à¤¾à¤šà¤¾à¤° à¤µà¤°à¥à¤—à¥€à¤•à¤°à¤£ à¤ªà¥à¤°à¤£à¤¾à¤²à¥€ à¤•à¤¾ à¤‰à¤ªà¤¯à¥‹à¤— à¤•à¤°à¤¤à¤¾ à¤¹à¥ˆà¥¤"
+                ],
+
+                [
+                    "à¤•à¥à¤¯à¤¾ TruthLens à¤—à¤²à¤¤ à¤¹à¥‹ à¤¸à¤•à¤¤à¤¾ à¤¹à¥ˆ?",
+                    "à¤¹à¤¾à¤‚à¥¤ à¤¸à¤¿à¤¸à¥à¤Ÿà¤® à¤—à¤²à¤¤ à¤¯à¤¾ à¤…à¤¨à¤¿à¤¶à¥à¤šà¤¿à¤¤ à¤µà¤°à¥à¤—à¥€à¤•à¤°à¤£ à¤¦à¥‡ à¤¸à¤•à¤¤à¤¾ à¤¹à¥ˆà¥¤ à¤®à¤¹à¤¤à¥à¤µà¤ªà¥‚à¤°à¥à¤£ à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤•à¥‹ à¤¸à¥à¤µà¤¤à¤‚à¤¤à¥à¤° à¤°à¥‚à¤ª à¤¸à¥‡ à¤¸à¤¤à¥à¤¯à¤¾à¤ªà¤¿à¤¤ à¤•à¤°à¤¨à¤¾ à¤šà¤¾à¤¹à¤¿à¤à¥¤"
+                ],
+
+                [
+                    "TruthLens à¤•à¤¾ à¤‰à¤¦à¥à¤¦à¥‡à¤¶à¥à¤¯ à¤•à¥à¤¯à¤¾ à¤¹à¥ˆ?",
+                    "TruthLens à¤•à¤¾ à¤‰à¤¦à¥à¤¦à¥‡à¤¶à¥à¤¯ à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤•à¥€ à¤œà¤¾à¤‚à¤š à¤•à¥‹ à¤¸à¤°à¤², à¤¸à¥à¤²à¤­ à¤”à¤° à¤†à¤¸à¤¾à¤¨à¥€ à¤¸à¥‡ à¤¸à¤®à¤à¤¨à¥‡ à¤¯à¥‹à¤—à¥à¤¯ à¤¬à¤¨à¤¾à¤¨à¤¾ à¤¹à¥ˆà¥¤"
+                ],
+
+                [
+                    "à¤¸à¤‚à¤¸à¥à¤•à¤°à¤£",
+                    "TruthLens â€¢ 2026"
+                ]
+
+            ]
+
+        },
+
+
+        privacy: {
+
+            title:
+                "à¤—à¥‹à¤ªà¤¨à¥€à¤¯à¤¤à¤¾ à¤¨à¥€à¤¤à¤¿",
+
+            intro:
+                "à¤¯à¤¹ à¤­à¤¾à¤— à¤¬à¤¤à¤¾à¤¤à¤¾ à¤¹à¥ˆ à¤•à¤¿ à¤µà¤°à¥à¤¤à¤®à¤¾à¤¨ TruthLens à¤à¤ªà¥à¤²à¤¿à¤•à¥‡à¤¶à¤¨ à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤•à¥‹ à¤•à¥ˆà¤¸à¥‡ à¤¸à¤‚à¤­à¤¾à¤²à¤¤à¤¾ à¤¹à¥ˆà¥¤",
+
+            items: [
+
+                [
+                    "à¤•à¥à¤¯à¤¾ TruthLens à¤®à¥‡à¤°à¤¾ à¤¸à¤®à¤¾à¤šà¤¾à¤° à¤Ÿà¥‡à¤•à¥à¤¸à¥à¤Ÿ à¤¸à¥à¤°à¤•à¥à¤·à¤¿à¤¤ à¤°à¤–à¤¤à¤¾ à¤¹à¥ˆ?",
+                    "à¤µà¤°à¥à¤¤à¤®à¤¾à¤¨ à¤«à¥à¤°à¤‚à¤Ÿà¤à¤‚à¤¡ à¤µà¤¿à¤¶à¥à¤²à¥‡à¤·à¤£ à¤•à¥‡ à¤²à¤¿à¤ à¤¸à¤¾à¤®à¤—à¥à¤°à¥€ à¤•à¥‹ configured TruthLens backend à¤ªà¤° à¤­à¥‡à¤œà¤¤à¤¾ à¤¹à¥ˆà¥¤ à¤•à¥à¤› preferences browser localStorage à¤®à¥‡à¤‚ à¤°à¤–à¥€ à¤œà¤¾à¤¤à¥€ à¤¹à¥ˆà¤‚à¥¤"
+                ],
+
+                [
+                    "à¤®à¥‡à¤°à¥‡ browser à¤®à¥‡à¤‚ à¤•à¥à¤¯à¤¾ save à¤¹à¥‹à¤¤à¤¾ à¤¹à¥ˆ?",
+                    "Theme, language, notification preferences, notification history à¤”à¤° demo profile à¤œà¥ˆà¤¸à¥€ à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ localStorage à¤®à¥‡à¤‚ à¤°à¤–à¥€ à¤œà¤¾ à¤¸à¤•à¤¤à¥€ à¤¹à¥ˆà¥¤"
+                ],
+
+                [
+                    "à¤•à¥à¤¯à¤¾ à¤®à¥‡à¤°à¤¾ login à¤à¤• à¤µà¤¾à¤¸à¥à¤¤à¤µà¤¿à¤• account à¤¹à¥ˆ?",
+                    "à¤µà¤°à¥à¤¤à¤®à¤¾à¤¨ login à¤à¤• frontend demonstration à¤¹à¥ˆà¥¤ Profile information browser à¤®à¥‡à¤‚ locally save à¤¹à¥‹à¤¤à¥€ à¤¹à¥ˆ à¤”à¤° à¤¯à¤¹ à¤ªà¥‚à¤°à¥à¤£ server-side authentication system à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆà¥¤"
+                ],
+
+                [
+                    "à¤•à¥à¤¯à¤¾ TruthLens browser notifications à¤‡à¤¸à¥à¤¤à¥‡à¤®à¤¾à¤² à¤•à¤°à¤¤à¤¾ à¤¹à¥ˆ?",
+                    "à¤¯à¤¦à¤¿ notifications à¤šà¤¾à¤²à¥‚ à¤¹à¥ˆà¤‚ à¤”à¤° browser permission à¤¦à¥€ à¤—à¤ˆ à¤¹à¥ˆ, à¤¤à¥‹ TruthLens analysis à¤¯à¤¾ security events à¤•à¥‡ à¤¬à¤¾à¤¦ notification à¤¦à¤¿à¤–à¤¾ à¤¸à¤•à¤¤à¤¾ à¤¹à¥ˆà¥¤"
+                ],
+
+                [
+                    "à¤®à¤¹à¤¤à¥à¤µà¤ªà¥‚à¤°à¥à¤£ à¤¸à¥‚à¤šà¤¨à¤¾",
+                    "TruthLens à¤®à¤¶à¥€à¤¨-à¤²à¤°à¥à¤¨à¤¿à¤‚à¤— à¤†à¤§à¤¾à¤°à¤¿à¤¤ à¤µà¤¿à¤¶à¥à¤²à¥‡à¤·à¤£ à¤ªà¥à¤°à¤¦à¤¾à¤¨ à¤•à¤°à¤¤à¤¾ à¤¹à¥ˆà¥¤ à¤ªà¤°à¤¿à¤£à¤¾à¤®à¥‹à¤‚ à¤•à¥‹ à¤•à¤¿à¤¸à¥€ à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤•à¥‡ à¤¸à¤¤à¥à¤¯ à¤¯à¤¾ à¤…à¤¸à¤¤à¥à¤¯ à¤¹à¥‹à¤¨à¥‡ à¤•à¤¾ à¤ªà¥‚à¤°à¥à¤£ à¤ªà¥à¤°à¤®à¤¾à¤£ à¤¨à¤¹à¥€à¤‚ à¤®à¤¾à¤¨à¤¾ à¤œà¤¾à¤¨à¤¾ à¤šà¤¾à¤¹à¤¿à¤à¥¤"
+                ],
+
+                [
+                    "à¤—à¥‹à¤ªà¤¨à¥€à¤¯à¤¤à¤¾ à¤…à¤ªà¤¡à¥‡à¤Ÿ",
+                    "à¤œà¥ˆà¤¸à¥‡-à¤œà¥ˆà¤¸à¥‡ TruthLens à¤®à¥‡à¤‚ à¤¨à¤ features à¤”à¤° functionality à¤µà¤¿à¤•à¤¸à¤¿à¤¤ à¤¹à¥‹à¤‚à¤—à¥‡, à¤¯à¤¹ privacy information à¤…à¤ªà¤¡à¥‡à¤Ÿ à¤•à¥€ à¤œà¤¾ à¤¸à¤•à¤¤à¥€ à¤¹à¥ˆà¥¤"
+                ]
+
+            ]
+
+        }
+
+    },
+
+
+    Bengali: {
+
+        help: {
+
+            title:
+                "à¦¸à¦¹à¦¾à¦¯à¦¼à¦¤à¦¾ à¦“ à¦¸à¦¾à¦§à¦¾à¦°à¦£ à¦ªà§à¦°à¦¶à§à¦¨",
+
+            intro:
+                "TruthLens à¦¸à¦®à§à¦ªà¦°à§à¦•à§‡ à¦¸à¦¾à¦§à¦¾à¦°à¦£ à¦ªà§à¦°à¦¶à§à¦¨à§‡à¦° à¦‰à¦¤à§à¦¤à¦° à¦à¦–à¦¾à¦¨à§‡ à¦¦à§‡à¦–à§à¦¨à¥¤",
+
+            items: [
+
+                [
+                    "TruthLens à¦•à§€?",
+                    "TruthLens à¦à¦•à¦Ÿà¦¿ AI-powered news verification tool à¦¯à¦¾ à¦¸à¦‚à¦¬à¦¾à¦¦ à¦Ÿà§‡à¦•à§à¦¸à¦Ÿ à¦à¦¬à¦‚ à¦²à¦¿à¦‚à¦• à¦¬à¦¿à¦¶à§à¦²à§‡à¦·à¦£ à¦•à¦°à§‡ model-based classification à¦ªà§à¦°à¦¦à¦¾à¦¨ à¦•à¦°à§‡à¥¤"
+                ],
+
+                [
+                    "à¦†à¦®à¦¿ à¦•à§€à¦­à¦¾à¦¬à§‡ à¦à¦•à¦Ÿà¦¿ à¦¸à¦‚à¦¬à¦¾à¦¦ à¦¨à¦¿à¦¬à¦¨à§à¦§ à¦ªà¦°à§€à¦•à§à¦·à¦¾ à¦•à¦°à¦¬?",
+                    "Home à¦ªà§‡à¦œà§‡ à¦¯à¦¾à¦¨, News Text à¦…à¦¥à¦¬à¦¾ News Link à¦¨à¦¿à¦°à§à¦¬à¦¾à¦šà¦¨ à¦•à¦°à§à¦¨, à¦¤à¦¥à§à¦¯ à¦²à¦¿à¦–à§à¦¨ à¦à¦¬à¦‚ Check News-à¦ à¦•à§à¦²à¦¿à¦• à¦•à¦°à§à¦¨à¥¤"
+                ],
+
+                [
+                    "à¦«à¦²à¦¾à¦«à¦² à¦•à¦¿ à¦¸à¦¬à¦¸à¦®à¦¯à¦¼ à¦¸à¦ à¦¿à¦• à¦¹à¦¯à¦¼?",
+                    "à¦¨à¦¾à¥¤ TruthLens AI/ML classification à¦ªà§à¦°à¦¦à¦¾à¦¨ à¦•à¦°à§‡ à¦à¦¬à¦‚ à¦•à§‹à¦¨à§‹ à¦¤à¦¥à§à¦¯ à¦¸à¦¤à§à¦¯ à¦¬à¦¾ à¦®à¦¿à¦¥à§à¦¯à¦¾ à¦¹à¦“à¦¯à¦¼à¦¾à¦° à¦šà§‚à¦¡à¦¼à¦¾à¦¨à§à¦¤ à¦ªà§à¦°à¦®à¦¾à¦£ à¦¹à¦¿à¦¸à§‡à¦¬à§‡ à¦à¦Ÿà¦¿à¦•à§‡ à¦¬à¦¿à¦¬à§‡à¦šà¦¨à¦¾ à¦•à¦°à¦¾ à¦‰à¦šà¦¿à¦¤ à¦¨à¦¯à¦¼à¥¤"
+                ],
+
+                [
+                    "à¦†à¦®à¦¿ à¦•à¦¿ à¦†à¦®à¦¾à¦° profile information à¦ªà¦°à¦¿à¦¬à¦°à§à¦¤à¦¨ à¦•à¦°à¦¤à§‡ à¦ªà¦¾à¦°à¦¿?",
+                    "à¦¹à§à¦¯à¦¾à¦à¥¤ Settings à¦ªà§‡à¦œà§‡ Edit Profile à¦¬à§à¦¯à¦¬à¦¹à¦¾à¦° à¦•à¦°à§‡ à¦†à¦ªà¦¨à¦¾à¦° à¦¨à¦¾à¦® à¦à¦¬à¦‚ email information à¦†à¦ªà¦¡à§‡à¦Ÿ à¦•à¦°à¦¤à§‡ à¦ªà¦¾à¦°à§‡à¦¨à¥¤"
+                ],
+
+                [
+                    "à¦†à¦®à¦¿ à¦•à¦¿ Guest à¦¹à¦¿à¦¸à§‡à¦¬à§‡ TruthLens à¦¬à§à¦¯à¦¬à¦¹à¦¾à¦° à¦•à¦°à¦¤à§‡ à¦ªà¦¾à¦°à¦¿?",
+                    "à¦¹à§à¦¯à¦¾à¦à¥¤ Login à¦ªà§‡à¦œà§‡ Continue as Guest à¦¨à¦¿à¦°à§à¦¬à¦¾à¦šà¦¨ à¦•à¦°à§‡ sign in à¦¨à¦¾ à¦•à¦°à§‡à¦‡ TruthLens à¦¬à§à¦¯à¦¬à¦¹à¦¾à¦° à¦•à¦°à¦¤à§‡ à¦ªà¦¾à¦°à§‡à¦¨à¥¤"
+                ]
+
+            ]
+
+        },
+
+
+        about: {
+
+            title:
+                "TruthLens à¦¸à¦®à§à¦ªà¦°à§à¦•à§‡",
+
+            intro:
+                "TruthLens à¦¤à§ˆà¦°à¦¿ à¦•à¦°à¦¾ à¦¹à¦¯à¦¼à§‡à¦›à§‡ à¦¸à¦‚à¦¬à¦¾à¦¦à§‡ à¦¬à¦¿à¦¶à§à¦¬à¦¾à¦¸ à¦¬à¦¾ à¦¶à§‡à¦¯à¦¼à¦¾à¦° à¦•à¦°à¦¾à¦° à¦†à¦—à§‡ à¦¤à¦¾ à¦ªà¦°à§€à¦•à§à¦·à¦¾ à¦•à¦°à¦¤à§‡ à¦¸à¦¾à¦¹à¦¾à¦¯à§à¦¯ à¦•à¦°à¦¾à¦° à¦œà¦¨à§à¦¯à¥¤",
+
+            items: [
+
+                [
+                    "TruthLens à¦•à§‹à¦¨ à¦ªà§à¦°à¦¯à§à¦•à§à¦¤à¦¿ à¦¬à§à¦¯à¦¬à¦¹à¦¾à¦° à¦•à¦°à§‡?",
+                    "TruthLens web frontend, FastAPI backend à¦à¦¬à¦‚ machine-learning news classification system à¦¬à§à¦¯à¦¬à¦¹à¦¾à¦° à¦•à¦°à§‡à¥¤"
+                ],
+
+                [
+                    "TruthLens à¦•à¦¿ à¦­à§à¦² à¦•à¦°à¦¤à§‡ à¦ªà¦¾à¦°à§‡?",
+                    "à¦¹à§à¦¯à¦¾à¦à¥¤ à¦¸à¦¿à¦¸à§à¦Ÿà§‡à¦® à¦­à§à¦² à¦¬à¦¾ à¦…à¦¨à¦¿à¦¶à§à¦šà¦¿à¦¤ classification à¦¦à¦¿à¦¤à§‡ à¦ªà¦¾à¦°à§‡à¥¤ à¦—à§à¦°à§à¦¤à§à¦¬à¦ªà§‚à¦°à§à¦£ à¦¤à¦¥à§à¦¯ à¦¸à§à¦¬à¦¾à¦§à§€à¦¨à¦­à¦¾à¦¬à§‡ à¦¯à¦¾à¦šà¦¾à¦‡ à¦•à¦°à¦¾ à¦‰à¦šà¦¿à¦¤à¥¤"
+                ],
+
+                [
+                    "TruthLens-à¦à¦° à¦‰à¦¦à§à¦¦à§‡à¦¶à§à¦¯ à¦•à§€?",
+                    "TruthLens-à¦à¦° à¦²à¦•à§à¦·à§à¦¯ à¦¹à¦²à§‹ à¦¤à¦¥à§à¦¯ à¦¯à¦¾à¦šà¦¾à¦‡à¦•à§‡ à¦¸à¦¹à¦œ, à¦¸à¦¬à¦¾à¦° à¦œà¦¨à§à¦¯ à¦¬à§à¦¯à¦¬à¦¹à¦¾à¦°à¦¯à§‹à¦—à§à¦¯ à¦à¦¬à¦‚ à¦¸à¦¹à¦œà§‡ à¦¬à§‹à¦à¦¾à¦° à¦®à¦¤à§‹ à¦•à¦°à¦¾à¥¤"
+                ],
+
+                [
+                    "à¦¸à¦‚à¦¸à§à¦•à¦°à¦£",
+                    "TruthLens â€¢ 2026"
+                ]
+
+            ]
+
+        },
+
+
+        privacy: {
+
+            title:
+                "à¦—à§‹à¦ªà¦¨à§€à¦¯à¦¼à¦¤à¦¾ à¦¨à§€à¦¤à¦¿",
+
+            intro:
+                "à¦¬à¦°à§à¦¤à¦®à¦¾à¦¨ TruthLens application à¦•à§€à¦­à¦¾à¦¬à§‡ à¦¤à¦¥à§à¦¯ à¦ªà¦°à¦¿à¦šà¦¾à¦²à¦¨à¦¾ à¦•à¦°à§‡ à¦¤à¦¾ à¦à¦–à¦¾à¦¨à§‡ à¦¬à§à¦¯à¦¾à¦–à§à¦¯à¦¾ à¦•à¦°à¦¾ à¦¹à¦¯à¦¼à§‡à¦›à§‡à¥¤",
+
+            items: [
+
+                [
+                    "TruthLens à¦•à¦¿ à¦†à¦®à¦¾à¦° à¦¸à¦‚à¦¬à¦¾à¦¦ à¦Ÿà§‡à¦•à§à¦¸à¦Ÿ à¦¸à¦‚à¦°à¦•à§à¦·à¦£ à¦•à¦°à§‡?",
+                    "à¦¬à¦°à§à¦¤à¦®à¦¾à¦¨ frontend à¦¬à¦¿à¦¶à§à¦²à§‡à¦·à¦£à§‡à¦° à¦œà¦¨à§à¦¯ submitted content configured TruthLens backend-à¦ à¦ªà¦¾à¦ à¦¾à¦¯à¦¼à¥¤ à¦•à¦¿à¦›à§ preference browser localStorage-à¦ à¦°à¦¾à¦–à¦¾ à¦¹à¦¯à¦¼à¥¤"
+                ],
+
+                [
+                    "à¦†à¦®à¦¾à¦° browser-à¦ à¦•à§€ à¦¸à¦‚à¦°à¦•à§à¦·à¦£ à¦•à¦°à¦¾ à¦¹à¦¯à¦¼?",
+                    "Theme, language, notification preferences, notification history à¦à¦¬à¦‚ demo profile information localStorage-à¦ à¦¸à¦‚à¦°à¦•à§à¦·à¦£ à¦•à¦°à¦¾ à¦¹à¦¤à§‡ à¦ªà¦¾à¦°à§‡à¥¤"
+                ],
+
+                [
+                    "à¦†à¦®à¦¾à¦° login à¦•à¦¿ à¦à¦•à¦Ÿà¦¿ à¦†à¦¸à¦² account?",
+                    "à¦¬à¦°à§à¦¤à¦®à¦¾à¦¨ login à¦à¦•à¦Ÿà¦¿ frontend demonstrationà¥¤ Profile information browser-à¦ locally à¦¸à¦‚à¦°à¦•à§à¦·à¦£ à¦•à¦°à¦¾ à¦¹à¦¯à¦¼ à¦à¦¬à¦‚ à¦à¦Ÿà¦¿ à¦¸à¦®à§à¦ªà§‚à¦°à§à¦£ server-side authentication system à¦¨à¦¯à¦¼à¥¤"
+                ],
+
+                [
+                    "TruthLens à¦•à¦¿ browser notifications à¦¬à§à¦¯à¦¬à¦¹à¦¾à¦° à¦•à¦°à§‡?",
+                    "Notifications à¦šà¦¾à¦²à§ à¦à¦¬à¦‚ browser permission à¦¦à§‡à¦“à¦¯à¦¼à¦¾ à¦¥à¦¾à¦•à¦²à§‡ TruthLens analysis à¦¬à¦¾ security event-à¦à¦° à¦ªà¦°à§‡ notification à¦¦à§‡à¦–à¦¾à¦¤à§‡ à¦ªà¦¾à¦°à§‡à¥¤"
+                ],
+
+                [
+                    "à¦—à§à¦°à§à¦¤à§à¦¬à¦ªà§‚à¦°à§à¦£ à¦¬à¦¿à¦œà§à¦žà¦ªà§à¦¤à¦¿",
+                    "TruthLens machine-learning à¦­à¦¿à¦¤à§à¦¤à¦¿à¦• analysis à¦ªà§à¦°à¦¦à¦¾à¦¨ à¦•à¦°à§‡à¥¤ à¦«à¦²à¦¾à¦«à¦²à¦•à§‡ à¦•à§‹à¦¨à§‹ à¦¤à¦¥à§à¦¯ à¦¸à¦¤à§à¦¯ à¦¬à¦¾ à¦®à¦¿à¦¥à§à¦¯à¦¾ à¦¹à¦“à¦¯à¦¼à¦¾à¦° à¦šà§‚à¦¡à¦¼à¦¾à¦¨à§à¦¤ à¦ªà§à¦°à¦®à¦¾à¦£ à¦¹à¦¿à¦¸à§‡à¦¬à§‡ à¦¬à¦¿à¦¬à§‡à¦šà¦¨à¦¾ à¦•à¦°à¦¾ à¦‰à¦šà¦¿à¦¤ à¦¨à¦¯à¦¼à¥¤"
+                ],
+
+                [
+                    "à¦—à§‹à¦ªà¦¨à§€à¦¯à¦¼à¦¤à¦¾ à¦†à¦ªà¦¡à§‡à¦Ÿ",
+                    "TruthLens à¦¨à¦¤à§à¦¨ features à¦à¦¬à¦‚ functionality à¦¤à§ˆà¦°à¦¿ à¦•à¦°à¦¾à¦° à¦¸à¦¾à¦¥à§‡ à¦¸à¦¾à¦¥à§‡ à¦à¦‡ privacy information à¦†à¦ªà¦¡à§‡à¦Ÿ à¦•à¦°à¦¾ à¦¹à¦¤à§‡ à¦ªà¦¾à¦°à§‡à¥¤"
+                ]
+
+            ]
+
+        }
+
+    }
+
+};
+
+/* =========================================================
+   SUPPORT LANGUAGE
+========================================================= */
+
+function applySupportLanguage(language) {
+
+    const selected =
+        supportTranslations[language] ||
+        supportTranslations.English;
+
+
+    /* =====================================================
+       HELP, ABOUT AND PRIVACY MODALS
+    ===================================================== */
+
+    [
+        ["helpModal", selected.help],
+        ["aboutModal", selected.about],
+        ["privacyModal", selected.privacy]
+
+    ].forEach(function ([modalId, data]) {
+
+        const modal =
+            document.getElementById(modalId);
+
+
+        if (!modal || !data) {
+            return;
+        }
+
+
+        /* =================================================
+           MODAL TITLE
+        ================================================= */
+
+        const heading =
+            modal.querySelector("h2");
+
+        if (heading && data.title) {
+            heading.textContent =
+                data.title;
+        }
+
+
+        /* =================================================
+           MODAL INTRODUCTION
+        ================================================= */
+
+        const intro =
+            modal.querySelector(
+                ".support-modal-intro"
+            );
+
+        if (intro && data.intro) {
+            intro.textContent =
+                data.intro;
+        }
+
+
+        /* =================================================
+           FAQ ITEMS
+        ================================================= */
+
+        const faqItems =
+            modal.querySelectorAll(
+                ".faq-item"
+            );
+
+
+        faqItems.forEach(function (item, index) {
+
+            const itemData =
+                data.items &&
+                data.items[index];
+
+
+            if (!itemData) {
+                return;
+            }
+
+
+            const question =
+                item.querySelector("h3");
+
+
+            const answer =
+                item.querySelector("p");
+
+
+            if (question) {
+
+                question.textContent =
+                    itemData[0];
+
+            }
+
+
+            if (answer) {
+
+                answer.textContent =
+                    itemData[1];
+
+            }
+
+        });
+
+
+        /* =================================================
+           IF A TRANSLATION HAS MORE FAQ ITEMS THAN THE HTML,
+           CREATE THE MISSING ITEMS AUTOMATICALLY
+        ================================================= */
+
+        const existingCount =
+            faqItems.length;
+
+
+        const translatedItems =
+            data.items || [];
+
+
+        if (
+            translatedItems.length >
+            existingCount
+        ) {
+
+            const content =
+                modal.querySelector(
+                    ".support-modal-content"
+                );
+
+
+            if (content) {
+
+                for (
+                    let i = existingCount;
+                    i < translatedItems.length;
+                    i++
+                ) {
+
+                    const itemData =
+                        translatedItems[i];
+
+
+                    const faqItem =
+                        document.createElement("div");
+
+                    faqItem.className =
+                        "faq-item";
+
+
+                    const question =
+                        document.createElement("h3");
+
+                    question.textContent =
+                        itemData[0];
+
+
+                    const answer =
+                        document.createElement("p");
+
+                    answer.textContent =
+                        itemData[1];
+
+
+                    faqItem.appendChild(
+                        question
+                    );
+
+                    faqItem.appendChild(
+                        answer
+                    );
+
+
+                    content.appendChild(
+                        faqItem
+                    );
+
+                }
+
+            }
+
+        }
+
+    });
+
+}
+
+/* =========================================================
+   APPLY LANGUAGE
+========================================================= */
+
+function applyLanguage(language) {
+
+    const selected =
+        translations[language] ||
+        translations.English;
+
+
+    /* ---------------------------------------------
+       Translate all data-i18n elements
+    --------------------------------------------- */
+
+    document
+        .querySelectorAll(
+            "[data-i18n]"
+        )
+        .forEach(
+            function (element) {
+
+                const key =
+                    element.dataset.i18n;
+
+
+                if (
+                    selected[key] !==
+                    undefined
+                ) {
+
+                    element.textContent =
+                        selected[key];
+
+                }
+
+            }
+        );
+
+
+    /* ---------------------------------------------
+       Translate Home placeholders
+    --------------------------------------------- */
+
+    const textInput =
+        document.getElementById(
+            "newsText"
+        );
+
+
+    const linkInput =
+        document.getElementById(
+            "newsLink"
+        );
+
+
+    if (
+        textInput &&
+        selected.newsTextPlaceholder
+    ) {
+
+        textInput.placeholder =
+            selected.newsTextPlaceholder;
+
+    }
+
+
+    if (
+        linkInput &&
+        selected.newsLinkPlaceholder
+    ) {
+
+        linkInput.placeholder =
+            selected.newsLinkPlaceholder;
+
+    }
+
+
+    /* ---------------------------------------------
+       Support modals
+    --------------------------------------------- */
+
+    applySupportLanguage(
+        language
+    );
+
+
+ /* ---------------------------------------------
+   Notifications
+--------------------------------------------- */
+
+renderTruthLensNotifications();
+
+
+/* =========================================================
+   REGISTER PAGE LANGUAGE
+========================================================= */
+
+const registerNameInput =
+    document.getElementById("registerName");
+
+const registerEmailInput =
+    document.getElementById("registerEmail");
+
+const registerPasswordInput =
+    document.getElementById("registerPassword");
+
+const confirmPasswordInput =
+    document.getElementById("confirmPassword");
+
+const registerLanguageLabel =
+    document.querySelector(
+        'label[for="registerLanguage"]'
+    );
+
+const registerBrandBadge =
+    document.querySelector(
+        ".register-trust span"
+    );
+
+const registerBrandDescription =
+    document.querySelector(
+        ".register-intro > p"
+    );
+
+const registerFeatures =
+    document.querySelectorAll(
+        ".register-features div"
+    );
+
+
+if (registerNameInput) {
+    registerNameInput.placeholder =
+        selected.registerFullNamePlaceholder;
+}
+
+if (registerEmailInput) {
+    registerEmailInput.placeholder =
+        selected.registerEmailPlaceholder;
+}
+
+if (registerPasswordInput) {
+    registerPasswordInput.placeholder =
+        selected.registerPasswordPlaceholder;
+}
+
+if (confirmPasswordInput) {
+    confirmPasswordInput.placeholder =
+        selected.registerConfirmPasswordPlaceholder;
+}
+
+if (registerLanguageLabel) {
+    registerLanguageLabel.textContent =
+        selected.registerLanguageLabel;
+}
+
+if (registerBrandBadge) {
+    registerBrandBadge.textContent =
+        selected.registerBrandBadge;
+}
+
+if (registerBrandDescription) {
+    registerBrandDescription.textContent =
+        selected.registerBrandDescription;
+}
+
+if (registerFeatures.length >= 3) {
+    registerFeatures[0].textContent =
+        selected.registerFeature1;
+
+    registerFeatures[1].textContent =
+        selected.registerFeature2;
+
+    registerFeatures[2].textContent =
+        selected.registerFeature3;
+}
+
+document
+    .querySelectorAll(
+        'a[href="register.html"]'
+    )
+    .forEach(function (link) {
+        link.textContent =
+            selected.navRegister;
+    });
+
+}
+
+
+/* =========================================================
+   PROFILE
+========================================================= */
+
+const profileName =
+    document.getElementById(
+        "profileName"
+    );
+
+
+const profileEmail =
+    document.getElementById(
+        "profileEmail"
+    );
+
+
+const profileAvatar =
+    document.querySelector(
+        ".profile-avatar"
+    );
+const profilePictureInput =
+    document.getElementById("profilePictureInput");
+
+function getSavedUser() {
+
+    try {
+
+    const saved =
+        sessionStorage.getItem(
+            "truthlensUser"
+        ) ||
+        localStorage.getItem(
+            "truthlensUser"
+        );
+
+
+    if (!saved) {
+
+        return null;
+
+    }
+
+
+    return JSON.parse(saved);
+
+} catch (error) {
+
+    console.error(
+        "Unable to read user:",
+        error
+    );
+
+
+    return null;
+
+}
+}
+
+function clearProfileDisplay() {
+
+    const language =
+        getCurrentLanguage();
+
+
+    const messages = {
+
+        English: {
+
+            name:
+                "No user logged in",
+
+            email:
+                "Please log in to view your profile"
+
+        },
+
+
+        Hindi: {
+
+            name:
+                "à¤•à¥‹à¤ˆ à¤‰à¤ªà¤¯à¥‹à¤—à¤•à¤°à¥à¤¤à¤¾ à¤²à¥‰à¤— à¤‡à¤¨ à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆ",
+
+            email:
+                "à¤…à¤ªà¤¨à¥€ à¤ªà¥à¤°à¥‹à¤«à¤¼à¤¾à¤‡à¤² à¤¦à¥‡à¤–à¤¨à¥‡ à¤•à¥‡ à¤²à¤¿à¤ à¤²à¥‰à¤— à¤‡à¤¨ à¤•à¤°à¥‡à¤‚"
+
+        },
+
+
+        Bengali: {
+
+            name:
+                "à¦•à§‹à¦¨à¦“ à¦¬à§à¦¯à¦¬à¦¹à¦¾à¦°à¦•à¦¾à¦°à§€ à¦²à¦— à¦‡à¦¨ à¦•à¦°à§‡à¦¨à¦¨à¦¿",
+
+            email:
+                "à¦†à¦ªà¦¨à¦¾à¦° à¦ªà§à¦°à§‹à¦«à¦¾à¦‡à¦² à¦¦à§‡à¦–à¦¤à§‡ à¦²à¦— à¦‡à¦¨ à¦•à¦°à§à¦¨"
+
+        }
+
+    };
+
+
+    const selected =
+        messages[language] ||
+        messages.English;
+
+
+    if (profileName) {
+
+        profileName.textContent =
+            selected.name;
+
+    }
+
+
+    if (profileEmail) {
+
+        profileEmail.textContent =
+            selected.email;
+
+    }
+
+
+    if (profileAvatar) {
+
+        profileAvatar.textContent =
+            "?";
+
+    }
+
+}
+
+
+function displayUser(user) {
+
+    /* =====================================================
+       NO USER LOGGED IN
+    ===================================================== */
+
+    if (!user) {
+
+        const currentLanguage =
+            getCurrentLanguage();
+
+
+        const noUserMessages = {
+
+            English: {
+
+                name:
+                    "No user logged in",
+
+                email:
+                    "Please log in to view your profile"
+
+            },
+
+
+            Hindi: {
+
+                name:
+                    "à¤•à¥‹à¤ˆ à¤‰à¤ªà¤¯à¥‹à¤—à¤•à¤°à¥à¤¤à¤¾ à¤²à¥‰à¤— à¤‡à¤¨ à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆ",
+
+                email:
+                    "à¤…à¤ªà¤¨à¥€ à¤ªà¥à¤°à¥‹à¤«à¤¼à¤¾à¤‡à¤² à¤¦à¥‡à¤–à¤¨à¥‡ à¤•à¥‡ à¤²à¤¿à¤ à¤²à¥‰à¤— à¤‡à¤¨ à¤•à¤°à¥‡à¤‚"
+
+            },
+
+
+            Bengali: {
+
+                name:
+                    "à¦•à§‹à¦¨à¦“ à¦¬à§à¦¯à¦¬à¦¹à¦¾à¦°à¦•à¦¾à¦°à§€ à¦²à¦— à¦‡à¦¨ à¦•à¦°à§‡à¦¨à¦¨à¦¿",
+
+                email:
+                    "à¦†à¦ªà¦¨à¦¾à¦° à¦ªà§à¦°à§‹à¦«à¦¾à¦‡à¦² à¦¦à§‡à¦–à¦¤à§‡ à¦²à¦— à¦‡à¦¨ à¦•à¦°à§à¦¨"
+
+            }
+
+        };
+
+
+        const messages =
+            noUserMessages[
+                currentLanguage
+            ] ||
+            noUserMessages.English;
+
+
+        if (profileName) {
+
+            profileName.textContent =
+                messages.name;
+
+        }
+
+
+        if (profileEmail) {
+
+            profileEmail.textContent =
+                messages.email;
+
+        }
+
+
+        if (profileAvatar) {
+
+            profileAvatar.textContent =
+                "?";
+
+        }
+
+
+        return;
+
+    }
+
+
+    /* =====================================================
+       USER IS LOGGED IN
+    ===================================================== */
+
+    if (profileName) {
+
+        profileName.textContent =
+            user.name ||
+            "Guest User";
+
+    }
+
+
+    if (profileEmail) {
+
+        profileEmail.textContent =
+            user.email ||
+            "Guest";
+
+    }
+
+
+    if (profileAvatar) {
+
+        const name =
+            user.name ||
+            "Guest User";
+
+
+        if (user.profilePicture) {
+
+    profileAvatar.innerHTML =
+        `<img src="${user.profilePicture}" alt="Profile Picture">`;
+
+} else {
+
+    profileAvatar.textContent =
+        user.name.charAt(0).toUpperCase();
+
+}
+
+    }
+
+}
+
+
+/* =========================================================
+   LANGUAGE SELECTOR
+========================================================= */
+
+const savedLanguage =
+    localStorage.getItem(
+        "language"
+    ) || "English";
+
+
+if (languageSelect) {
+
+    languageSelect.value =
+        savedLanguage;
+
+
+    languageSelect.addEventListener(
+        "change",
+        function () {
+
+            const selectedLanguage =
+                this.value;
+
+
+            localStorage.setItem(
+                "language",
+                selectedLanguage
+            );
+
+
+            /* -----------------------------------------
+               Apply language to entire application
+            ----------------------------------------- */
+
+            applyLanguage(
+                selectedLanguage
+            );
+
+
+            /* -----------------------------------------
+               Refresh profile immediately
+               without page refresh
+            ----------------------------------------- */
+
+            const currentUser =
+                getSavedUser();
+
+
+            displayUser(
+                currentUser
+            );
+
+        }
+    );
+}
+/* =========================================================
+   REGISTER LANGUAGE SELECTOR
+========================================================= */
+
+if (registerLanguage) {
+
+    registerLanguage.value =
+        savedLanguage;
+
+    registerLanguage.addEventListener(
+        "change",
+        function () {
+
+            const selectedLanguage =
+                this.value;
+
+            localStorage.setItem(
+                "language",
+                selectedLanguage
+            );
+
+            applyLanguage(
+                selectedLanguage
+            );
+
+        }
+    );
+
+}
+
+/* =========================================================
+   LOAD SAVED USER + VERIFY BACKEND SESSION
+========================================================= */
+
+async function loadAuthenticatedUser() {
+
+    const savedUser =
+        getSavedUser();
+
+    const accessToken =
+        sessionStorage.getItem(
+            "truthlensAccessToken"
+        ) ||
+        localStorage.getItem(
+            "truthlensAccessToken"
+        );
+
+    /* -----------------------------------------
+       Guest / no backend token
+    ----------------------------------------- */
+
+    if (!accessToken) {
+
+        if (savedUser) {
+
+            displayUser(
+                savedUser
+            );
+
+        } else {
+
+            displayUser(
+                null
+            );
+
+        }
+
+        return;
+
+    }
+
+    /* -----------------------------------------
+       Verify real backend login
+    ----------------------------------------- */
+
+    const verifiedUser =
+        await verifyBackendSession();
+
+   if (verifiedUser) {
+
+    /* -----------------------------------------
+       Save verified backend user
+    ----------------------------------------- */
+
+    const verifiedUserData =
+        JSON.stringify(
+            verifiedUser
+        );
+
+    if (
+        sessionStorage.getItem(
+            "truthlensAccessToken"
+        )
+    ) {
+
+        sessionStorage.setItem(
+            "truthlensUser",
+            verifiedUserData
+        );
+
+    } else {
+
+        localStorage.setItem(
+            "truthlensUser",
+            verifiedUserData
+        );
+    }
+
+    /* -----------------------------------------
+       Display verified user
+    ----------------------------------------- */
+
+    displayUser(
+        verifiedUser
+    );
+
+} else {
+
+        /* -------------------------------------
+           Invalid/expired token
+           Clear authentication information
+        ------------------------------------- */
+
+        localStorage.removeItem(
+            "truthlensAccessToken"
+        );
+
+        sessionStorage.removeItem(
+            "truthlensAccessToken"
+        );
+
+        localStorage.removeItem(
+            "truthlensUser"
+        );
+
+        sessionStorage.removeItem(
+            "truthlensUser"
+        );
+
+        displayUser(
+            null
+        );
+
+    }
+
+}
+
+loadAuthenticatedUser();
+/* =========================================================
+   SETTINGS PAGE AUTHENTICATION GUARD
+========================================================= */
+
+async function protectSettingsPage() {
+
+    const isSettingsPage =
+        window.location.pathname.endsWith(
+            "settings.html"
+        );
+
+    if (!isSettingsPage) {
+        return;
+    }
+
+    const accessToken =
+        sessionStorage.getItem(
+            "truthlensAccessToken"
+        ) ||
+        localStorage.getItem(
+            "truthlensAccessToken"
+        );
+
+    /* -----------------------------------------
+       No real login token
+    ----------------------------------------- */
+
+    if (!accessToken) {
+
+        window.location.href =
+            "register.html";
+
+        return;
+    }
+
+    /* -----------------------------------------
+       Verify backend session
+    ----------------------------------------- */
+
+    const verifiedUser =
+        await verifyBackendSession();
+
+    if (!verifiedUser) {
+
+        localStorage.removeItem(
+            "truthlensAccessToken"
+        );
+
+        sessionStorage.removeItem(
+            "truthlensAccessToken"
+        );
+
+        localStorage.removeItem(
+            "truthlensUser"
+        );
+
+        sessionStorage.removeItem(
+            "truthlensUser"
+        );
+
+        window.location.href =
+            "register.html";
+
+        return;
+    }
+}
+/* =========================================================
+   HOME PAGE ACCESS
+   Registered users + Guest users
+========================================================= */
+
+async function protectHomePage() {
+
+    const isHomePage =
+        window.location.pathname.endsWith("index.html") ||
+        window.location.pathname === "/" ||
+        window.location.pathname === "";
+
+    if (!isHomePage) {
+        return;
+    }
+
+    /* -----------------------------------------
+       Check saved user
+    ----------------------------------------- */
+
+    const savedUser =
+        getSavedUser();
+
+    /* -----------------------------------------
+       Guest user
+       Allow Home + News Analysis
+    ----------------------------------------- */
+
+    if (
+        savedUser &&
+        savedUser.isGuest === true
+    ) {
+        return;
+    }
+
+    /* -----------------------------------------
+       Real logged-in user
+       Verify backend session
+    ----------------------------------------- */
+
+    const accessToken =
+        sessionStorage.getItem(
+            "truthlensAccessToken"
+        ) ||
+        localStorage.getItem(
+            "truthlensAccessToken"
+        );
+
+    if (!accessToken) {
+
+        window.location.href =
+            "register.html";
+
+        return;
+    }
+
+    const verifiedUser =
+        await verifyBackendSession();
+
+    if (!verifiedUser) {
+
+        window.location.href =
+            "register.html";
+
+        return;
+    }
+}
+
+protectHomePage();
+
+protectSettingsPage();
+/* =========================================================
+   LOGIN PAGE AUTHENTICATION GUARD
+========================================================= */
+
+async function protectLoginPage() {
+
+    const isLoginPage =
+        window.location.pathname.endsWith(
+            "login.html"
+        );
+
+    if (!isLoginPage) {
+        return;
+    }
+/* -----------------------------------------
+   Guest users cannot access Login
+   â†’ Register page
+----------------------------------------- */
+
+const savedUser =
+    getSavedUser();
+
+if (
+    savedUser &&
+    savedUser.isGuest === true
+) {
+
+    window.location.href =
+        "register.html";
+
+    return;
+}
+
+    /* -----------------------------------------
+       Check if user intentionally clicked Login
+       from Register page
+    ----------------------------------------- */
+
+    const loginIntent =
+        sessionStorage.getItem(
+            "truthlensLoginIntent"
+        ) === "true";
+
+    /* -----------------------------------------
+       Check if user has registered before
+    ----------------------------------------- */
+
+    const hasRegistered =
+        localStorage.getItem(
+            "truthlensRegistered"
+        ) === "true";
+
+    /* -----------------------------------------
+       Never registered and did not click
+       Login intentionally
+       â†’ Register page
+    ----------------------------------------- */
+
+    if (!hasRegistered && !loginIntent) {
+
+        window.location.href =
+            "register.html";
+
+        return;
+    }
+
+    /* -----------------------------------------
+       Check existing login token
+    ----------------------------------------- */
+
+    const accessToken =
+        sessionStorage.getItem(
+            "truthlensAccessToken"
+        ) ||
+        localStorage.getItem(
+            "truthlensAccessToken"
+        );
+
+    /* -----------------------------------------
+       No token
+       â†’ Stay on Login page
+    ----------------------------------------- */
+
+    if (!accessToken) {
+        return;
+    }
+
+    /* -----------------------------------------
+       Verify backend session
+    ----------------------------------------- */
+
+    const verifiedUser =
+        await verifyBackendSession();
+
+    /* -----------------------------------------
+       Already logged in
+       â†’ Home
+    ----------------------------------------- */
+
+    if (verifiedUser) {
+
+        window.location.href =
+            "index.html";
+
+        return;
+    }
+}
+
+protectLoginPage();
+
+/* =========================================================
+   EDIT PROFILE
+========================================================= */
+
+const editProfileButton =
+    document.getElementById(
+        "editProfileButton"
+    );
+console.log(
+    "EDIT BUTTON:",
+    editProfileButton
+);
+
+const editProfileTranslations = {
+
+    English: {
+
+        loginFirst:
+            "Please log in first to edit your profile.",
+
+        enterName:
+            "Enter your name:",
+
+        nameEmpty:
+            "Name cannot be empty.",
+
+        enterEmail:
+            "Enter your email:",
+
+        emailEmpty:
+            "Email cannot be empty.",
+
+        invalidEmail:
+            "Please enter a valid email address.",
+
+        updating:
+            "Updating profile...",
+
+        success:
+            "Profile updated successfully!",
+
+        updateFailed:
+            "Unable to update your profile."
+
+    },
+
+
+    Hindi: {
+
+        loginFirst:
+            "à¤…à¤ªà¤¨à¥€ à¤ªà¥à¤°à¥‹à¤«à¤¼à¤¾à¤‡à¤² à¤¸à¤‚à¤ªà¤¾à¤¦à¤¿à¤¤ à¤•à¤°à¤¨à¥‡ à¤•à¥‡ à¤²à¤¿à¤ à¤ªà¤¹à¤²à¥‡ à¤²à¥‰à¤— à¤‡à¤¨ à¤•à¤°à¥‡à¤‚à¥¤",
+
+        enterName:
+            "à¤…à¤ªà¤¨à¤¾ à¤¨à¤¾à¤® à¤¦à¤°à¥à¤œ à¤•à¤°à¥‡à¤‚:",
+
+        nameEmpty:
+            "à¤¨à¤¾à¤® à¤–à¤¾à¤²à¥€ à¤¨à¤¹à¥€à¤‚ à¤¹à¥‹ à¤¸à¤•à¤¤à¤¾à¥¤",
+
+        enterEmail:
+            "à¤…à¤ªà¤¨à¤¾ à¤ˆà¤®à¥‡à¤² à¤¦à¤°à¥à¤œ à¤•à¤°à¥‡à¤‚:",
+
+        emailEmpty:
+            "à¤ˆà¤®à¥‡à¤² à¤–à¤¾à¤²à¥€ à¤¨à¤¹à¥€à¤‚ à¤¹à¥‹ à¤¸à¤•à¤¤à¤¾à¥¤",
+
+        invalidEmail:
+            "à¤•à¥ƒà¤ªà¤¯à¤¾ à¤à¤• à¤®à¤¾à¤¨à¥à¤¯ à¤ˆà¤®à¥‡à¤² à¤ªà¤¤à¤¾ à¤¦à¤°à¥à¤œ à¤•à¤°à¥‡à¤‚à¥¤",
+
+        updating:
+            "à¤ªà¥à¤°à¥‹à¤«à¤¼à¤¾à¤‡à¤² à¤…à¤ªà¤¡à¥‡à¤Ÿ à¤¹à¥‹ à¤°à¤¹à¥€ à¤¹à¥ˆ...",
+
+        success:
+            "à¤ªà¥à¤°à¥‹à¤«à¤¼à¤¾à¤‡à¤² à¤¸à¤«à¤²à¤¤à¤¾à¤ªà¥‚à¤°à¥à¤µà¤• à¤…à¤ªà¤¡à¥‡à¤Ÿ à¤¹à¥‹ à¤—à¤ˆ!",
+
+        updateFailed:
+            "à¤ªà¥à¤°à¥‹à¤«à¤¼à¤¾à¤‡à¤² à¤…à¤ªà¤¡à¥‡à¤Ÿ à¤¨à¤¹à¥€à¤‚ à¤¹à¥‹ à¤¸à¤•à¥€à¥¤"
+
+    },
+
+
+    Bengali: {
+
+        loginFirst:
+            "à¦†à¦ªà¦¨à¦¾à¦° à¦ªà§à¦°à§‹à¦«à¦¾à¦‡à¦² à¦¸à¦®à§à¦ªà¦¾à¦¦à¦¨à¦¾ à¦•à¦°à¦¤à§‡ à¦ªà§à¦°à¦¥à¦®à§‡ à¦²à¦— à¦‡à¦¨ à¦•à¦°à§à¦¨à¥¤",
+
+        enterName:
+            "à¦†à¦ªà¦¨à¦¾à¦° à¦¨à¦¾à¦® à¦²à¦¿à¦–à§à¦¨:",
+
+        nameEmpty:
+            "à¦¨à¦¾à¦® à¦–à¦¾à¦²à¦¿ à¦°à¦¾à¦–à¦¾ à¦¯à¦¾à¦¬à§‡ à¦¨à¦¾à¥¤",
+
+        enterEmail:
+            "à¦†à¦ªà¦¨à¦¾à¦° à¦‡à¦®à§‡à¦² à¦²à¦¿à¦–à§à¦¨:",
+
+        emailEmpty:
+            "à¦‡à¦®à§‡à¦² à¦–à¦¾à¦²à¦¿ à¦°à¦¾à¦–à¦¾ à¦¯à¦¾à¦¬à§‡ à¦¨à¦¾à¥¤",
+
+        invalidEmail:
+            "à¦…à¦¨à§à¦—à§à¦°à¦¹ à¦•à¦°à§‡ à¦à¦•à¦Ÿà¦¿ à¦¬à§ˆà¦§ à¦‡à¦®à§‡à¦² à¦ à¦¿à¦•à¦¾à¦¨à¦¾ à¦²à¦¿à¦–à§à¦¨à¥¤",
+
+        updating:
+            "à¦ªà§à¦°à§‹à¦«à¦¾à¦‡à¦² à¦†à¦ªà¦¡à§‡à¦Ÿ à¦¹à¦šà§à¦›à§‡...",
+
+        success:
+            "à¦ªà§à¦°à§‹à¦«à¦¾à¦‡à¦² à¦¸à¦«à¦²à¦­à¦¾à¦¬à§‡ à¦†à¦ªà¦¡à§‡à¦Ÿ à¦¹à¦¯à¦¼à§‡à¦›à§‡!",
+
+        updateFailed:
+            "à¦ªà§à¦°à§‹à¦«à¦¾à¦‡à¦² à¦†à¦ªà¦¡à§‡à¦Ÿ à¦•à¦°à¦¾ à¦¯à¦¾à¦¯à¦¼à¦¨à¦¿à¥¤"
+
+    }
+
+};
+
+console.log("EDIT PROFILE SECTION REACHED");
+
+if (editProfileButton) {
+
+    editProfileButton.addEventListener(
+        "click",
+        async function () {
+
+            console.log(
+                "Edit Profile button clicked"
+            );
+
+
+            const language =
+                getCurrentLanguage();
+
+
+            const messages =
+                editProfileTranslations[
+                    language
+                ] ||
+                editProfileTranslations.English;
+
+
+            /* -----------------------------------------
+               Get current user
+            ----------------------------------------- */
+
+            const currentUser =
+                getSavedUser();
+
+
+            /* -----------------------------------------
+               No user logged in
+            ----------------------------------------- */
+
+            if (!currentUser) {
+
+                alert(
+                    messages.loginFirst
+                );
+
+                return;
+            }
+
+
+            /* -----------------------------------------
+               Get backend access token
+            ----------------------------------------- */
+
+            const accessToken =
+                sessionStorage.getItem(
+                    "truthlensAccessToken"
+                ) ||
+                localStorage.getItem(
+                    "truthlensAccessToken"
+                );
+
+
+            /* -----------------------------------------
+               Real account required
+            ----------------------------------------- */
+
+            if (
+                !accessToken ||
+                currentUser.isGuest
+            ) {
+
+                alert(
+                    messages.loginFirst
+                );
+
+                return;
+            }
+
+
+            /* -----------------------------------------
+               Ask for new name
+            ----------------------------------------- */
+
+            const newName =
+                prompt(
+                    messages.enterName,
+                    currentUser.name || ""
+                );
+
+
+            if (newName === null) {
+
+                return;
+            }
+
+
+            const cleanedName =
+                newName.trim();
+
+
+            /* -----------------------------------------
+               Validate name
+            ----------------------------------------- */
+
+            if (cleanedName === "") {
+
+                alert(
+                    messages.nameEmpty
+                );
+
+                return;
+            }
+
+
+            /* -----------------------------------------
+               Ask for new email
+            ----------------------------------------- */
+
+            const newEmail =
+                prompt(
+                    messages.enterEmail,
+                    currentUser.email || ""
+                );
+
+
+            if (newEmail === null) {
+
+                return;
+            }
+
+
+            const cleanedEmail =
+                newEmail.trim();
+
+
+            /* -----------------------------------------
+               Validate email
+            ----------------------------------------- */
+
+            if (cleanedEmail === "") {
+
+                alert(
+                    messages.emailEmpty
+                );
+
+                return;
+            }
+
+
+            if (
+                !cleanedEmail.includes("@") ||
+                !cleanedEmail.includes(".")
+            ) {
+
+                alert(
+                    messages.invalidEmail
+                );
+
+                return;
+            }
+
+
+            /* -----------------------------------------
+               Show update message
+            ----------------------------------------- */
+
+            console.log(
+                messages.updating
+            );
+
+
+            try {
+
+                /* -------------------------------------
+                   Update backend database
+                ------------------------------------- */
+
+                const response =
+                    await fetch(
+                        "http://127.0.0.1:8000/profile",
+                        {
+                            method: "PUT",
+
+                            headers: {
+                                "Content-Type":
+                                    "application/json",
+
+                                "Authorization":
+                                    "Bearer " +
+                                    accessToken
+                            },
+
+                            body:
+                                JSON.stringify({
+                                    name:
+                                        cleanedName,
+
+                                    email:
+                                        cleanedEmail
+                                })
+                        }
+                    );
+
+
+               const data =
+    await response.json();
+
+if (data.access_token) {
+
+    if (
+        sessionStorage.getItem(
+            "truthlensAccessToken"
+        )
+    ) {
+
+        sessionStorage.setItem(
+            "truthlensAccessToken",
+            data.access_token
+        );
+
+    } else {
+
+        localStorage.setItem(
+            "truthlensAccessToken",
+            data.access_token
+        );
+    }
+}
+
+
+                /* -------------------------------------
+                   Backend error
+                ------------------------------------- */
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        data.detail ||
+                        messages.updateFailed
+                    );
+                }
+
+
+                /* -------------------------------------
+                   Get updated backend user
+                ------------------------------------- */
+
+                const updatedUser =
+                    data.user;
+
+
+                if (!updatedUser) {
+
+                    throw new Error(
+                        messages.updateFailed
+                    );
+                }
+
+
+                const userData = {
+
+                    id:
+                        updatedUser.id,
+
+                    name:
+                        updatedUser.name,
+
+                    email:
+                        updatedUser.email,
+
+                    isGuest:
+                        false,
+
+                    profilePicture:
+                        currentUser.profilePicture ||
+                        null
+                };
+
+
+                /* -------------------------------------
+                   Save updated user
+                ------------------------------------- */
+
+                const userJSON =
+                    JSON.stringify(
+                        userData
+                    );
+
+
+                if (
+                    sessionStorage.getItem(
+                        "truthlensAccessToken"
+                    )
+                ) {
+
+                    sessionStorage.setItem(
+                        "truthlensUser",
+                        userJSON
+                    );
+
+                } else {
+
+                    localStorage.setItem(
+                        "truthlensUser",
+                        userJSON
+                    );
+                }
+
+
+                /* -------------------------------------
+                   Update profile immediately
+                ------------------------------------- */
+
+                displayUser(
+                    userData
+                );
+
+
+                /* -------------------------------------
+                   Success message
+                ------------------------------------- */
+
+                alert(
+                    messages.success
+                );
+
+
+                /* -------------------------------------
+                   Profile update notification
+                ------------------------------------- */
+
+                const profileNotificationTexts = {
+
+                    English: {
+
+                        title:
+                            "Profile Updated",
+
+                        message:
+                            "Your TruthLens profile has been updated successfully."
+
+                    },
+
+
+                    Hindi: {
+
+                        title:
+                            "à¤ªà¥à¤°à¥‹à¤«à¤¼à¤¾à¤‡à¤² à¤…à¤ªà¤¡à¥‡à¤Ÿ à¤¹à¥à¤ˆ",
+
+                        message:
+                            "à¤†à¤ªà¤•à¥€ TruthLens à¤ªà¥à¤°à¥‹à¤«à¤¼à¤¾à¤‡à¤² à¤¸à¤«à¤²à¤¤à¤¾à¤ªà¥‚à¤°à¥à¤µà¤• à¤…à¤ªà¤¡à¥‡à¤Ÿ à¤¹à¥‹ à¤—à¤ˆ à¤¹à¥ˆà¥¤"
+
+                    },
+
+
+                    Bengali: {
+
+                        title:
+                            "à¦ªà§à¦°à§‹à¦«à¦¾à¦‡à¦² à¦†à¦ªà¦¡à§‡à¦Ÿ à¦¹à¦¯à¦¼à§‡à¦›à§‡",
+
+                        message:
+                            "à¦†à¦ªà¦¨à¦¾à¦° TruthLens à¦ªà§à¦°à§‹à¦«à¦¾à¦‡à¦² à¦¸à¦«à¦²à¦­à¦¾à¦¬à§‡ à¦†à¦ªà¦¡à§‡à¦Ÿ à¦¹à¦¯à¦¼à§‡à¦›à§‡à¥¤"
+
+                    }
+
+                };
+
+
+                const profileNotification =
+                    profileNotificationTexts[
+                        language
+                    ] ||
+                    profileNotificationTexts.English;
+
+
+                addTruthLensNotification(
+                    profileNotification.title,
+                    profileNotification.message,
+                    "profile"
+                );
+
+
+                sendBrowserNotification(
+                    profileNotification.title,
+                    profileNotification.message
+                );
+
+
+            } catch (error) {
+
+                console.error(
+                    "Profile update error:",
+                    error
+                );
+
+
+                alert(
+                    error.message ||
+                    messages.updateFailed
+                );
+            }
+        }
+    );
+}
+
+
+/* =========================================================
+   NOTIFICATION SETTINGS
+========================================================= */
+
+const analysisNotifications =
+    document.getElementById(
+        "analysisNotifications"
+    );
+
+
+const securityNotifications =
+    document.getElementById(
+        "securityNotifications"
+    );
+
+
+const notificationSettingTranslations = {
+
+    English: {
+
+        analysisEnabledTitle:
+            "Analysis Notifications Enabled",
+
+        analysisEnabledMessage:
+            "You will receive notifications after news analysis.",
+            analysisDisabledTitle:
+    "Analysis Notifications Disabled",
+
+analysisDisabledMessage:
+    "You will no longer receive notifications after news analysis.",
+
+        securityEnabledTitle:
+            "Security Notifications Enabled",
+
+        securityEnabledMessage:
+            "Important TruthLens account and security alerts are enabled.",
+            securityDisabledTitle:
+    "Security Notifications Disabled",
+
+securityDisabledMessage:
+    "Important TruthLens account and security alerts are disabled.",
+
+        browserBlocked:
+            "Notifications are blocked in your browser. Please allow notifications for TruthLens in browser settings."
+
+    },
+
+
+    Hindi: {
+
+        analysisEnabledTitle:
+            "à¤µà¤¿à¤¶à¥à¤²à¥‡à¤·à¤£ à¤¸à¥‚à¤šà¤¨à¤¾à¤à¤‚ à¤¸à¤•à¥à¤·à¤® à¤¹à¥ˆà¤‚",
+
+        analysisEnabledMessage:
+            "à¤¸à¤®à¤¾à¤šà¤¾à¤° à¤µà¤¿à¤¶à¥à¤²à¥‡à¤·à¤£ à¤•à¥‡ à¤¬à¤¾à¤¦ à¤†à¤ªà¤•à¥‹ à¤¸à¥‚à¤šà¤¨à¤¾à¤à¤‚ à¤ªà¥à¤°à¤¾à¤ªà¥à¤¤ à¤¹à¥‹à¤‚à¤—à¥€à¥¤",
+            analysisDisabledTitle:
+    "à¤µà¤¿à¤¶à¥à¤²à¥‡à¤·à¤£ à¤¸à¥‚à¤šà¤¨à¤¾à¤à¤‚ à¤¬à¤‚à¤¦ à¤¹à¥ˆà¤‚",
+
+analysisDisabledMessage:
+    "à¤¸à¤®à¤¾à¤šà¤¾à¤° à¤µà¤¿à¤¶à¥à¤²à¥‡à¤·à¤£ à¤•à¥‡ à¤¬à¤¾à¤¦ à¤†à¤ªà¤•à¥‹ à¤¸à¥‚à¤šà¤¨à¤¾à¤à¤‚ à¤ªà¥à¤°à¤¾à¤ªà¥à¤¤ à¤¨à¤¹à¥€à¤‚ à¤¹à¥‹à¤‚à¤—à¥€à¥¤",
+
+        securityEnabledTitle:
+            "à¤¸à¥à¤°à¤•à¥à¤·à¤¾ à¤¸à¥‚à¤šà¤¨à¤¾à¤à¤‚ à¤¸à¤•à¥à¤·à¤® à¤¹à¥ˆà¤‚",
+
+        securityEnabledMessage:
+            "à¤®à¤¹à¤¤à¥à¤µà¤ªà¥‚à¤°à¥à¤£ TruthLens à¤–à¤¾à¤¤à¤¾ à¤”à¤° à¤¸à¥à¤°à¤•à¥à¤·à¤¾ à¤…à¤²à¤°à¥à¤Ÿ à¤¸à¤•à¥à¤·à¤® à¤¹à¥ˆà¤‚à¥¤",
+            securityDisabledTitle:
+    "à¤¸à¥à¤°à¤•à¥à¤·à¤¾ à¤¸à¥‚à¤šà¤¨à¤¾à¤à¤‚ à¤¬à¤‚à¤¦ à¤¹à¥ˆà¤‚",
+
+securityDisabledMessage:
+    "à¤®à¤¹à¤¤à¥à¤µà¤ªà¥‚à¤°à¥à¤£ TruthLens à¤–à¤¾à¤¤à¤¾ à¤”à¤° à¤¸à¥à¤°à¤•à¥à¤·à¤¾ à¤…à¤²à¤°à¥à¤Ÿ à¤¬à¤‚à¤¦ à¤¹à¥ˆà¤‚à¥¤",
+
+        browserBlocked:
+            "à¤†à¤ªà¤•à¥‡ à¤¬à¥à¤°à¤¾à¤‰à¤œà¤¼à¤° à¤®à¥‡à¤‚ à¤¸à¥‚à¤šà¤¨à¤¾à¤à¤‚ à¤…à¤µà¤°à¥à¤¦à¥à¤§ à¤¹à¥ˆà¤‚à¥¤ à¤•à¥ƒà¤ªà¤¯à¤¾ à¤¬à¥à¤°à¤¾à¤‰à¤œà¤¼à¤° à¤¸à¥‡à¤Ÿà¤¿à¤‚à¤—à¥à¤¸ à¤®à¥‡à¤‚ TruthLens à¤•à¥‡ à¤²à¤¿à¤ à¤¸à¥‚à¤šà¤¨à¤¾à¤à¤‚ à¤…à¤¨à¥à¤®à¤¤à¤¿ à¤¦à¥‡à¤‚à¥¤"
+
+    },
+
+
+    Bengali: {
+
+        analysisEnabledTitle:
+            "à¦¬à¦¿à¦¶à§à¦²à§‡à¦·à¦£ à¦¬à¦¿à¦œà§à¦žà¦ªà§à¦¤à¦¿ à¦šà¦¾à¦²à§ à¦¹à¦¯à¦¼à§‡à¦›à§‡",
+
+        analysisEnabledMessage:
+            "à¦¸à¦‚à¦¬à¦¾à¦¦ à¦¬à¦¿à¦¶à§à¦²à§‡à¦·à¦£à§‡à¦° à¦ªà¦°à§‡ à¦†à¦ªà¦¨à¦¿ à¦¬à¦¿à¦œà§à¦žà¦ªà§à¦¤à¦¿ à¦ªà¦¾à¦¬à§‡à¦¨à¥¤",
+            analysisDisabledTitle:
+    "à¦¬à¦¿à¦¶à§à¦²à§‡à¦·à¦£ à¦¬à¦¿à¦œà§à¦žà¦ªà§à¦¤à¦¿ à¦¬à¦¨à§à¦§ à¦¹à¦¯à¦¼à§‡à¦›à§‡",
+
+analysisDisabledMessage:
+    "à¦¸à¦‚à¦¬à¦¾à¦¦ à¦¬à¦¿à¦¶à§à¦²à§‡à¦·à¦£à§‡à¦° à¦ªà¦°à§‡ à¦†à¦ªà¦¨à¦¿ à¦†à¦° à¦¬à¦¿à¦œà§à¦žà¦ªà§à¦¤à¦¿ à¦ªà¦¾à¦¬à§‡à¦¨ à¦¨à¦¾.",
+
+        securityEnabledTitle:
+            "à¦¨à¦¿à¦°à¦¾à¦ªà¦¤à§à¦¤à¦¾ à¦¬à¦¿à¦œà§à¦žà¦ªà§à¦¤à¦¿ à¦šà¦¾à¦²à§ à¦¹à¦¯à¦¼à§‡à¦›à§‡",
+
+        securityEnabledMessage:
+            "à¦—à§à¦°à§à¦¤à§à¦¬à¦ªà§‚à¦°à§à¦£ TruthLens à¦…à§à¦¯à¦¾à¦•à¦¾à¦‰à¦¨à§à¦Ÿ à¦à¦¬à¦‚ à¦¨à¦¿à¦°à¦¾à¦ªà¦¤à§à¦¤à¦¾ à¦¸à¦¤à¦°à§à¦•à¦¤à¦¾ à¦šà¦¾à¦²à§ à¦¹à¦¯à¦¼à§‡à¦›à§‡à¥¤",
+            securityDisabledTitle:
+    "à¦¨à¦¿à¦°à¦¾à¦ªà¦¤à§à¦¤à¦¾ à¦¬à¦¿à¦œà§à¦žà¦ªà§à¦¤à¦¿ à¦¬à¦¨à§à¦§ à¦¹à¦¯à¦¼à§‡à¦›à§‡",
+
+securityDisabledMessage:
+    "à¦—à§à¦°à§à¦¤à§à¦¬à¦ªà§‚à¦°à§à¦£ TruthLens à¦…à§à¦¯à¦¾à¦•à¦¾à¦‰à¦¨à§à¦Ÿ à¦à¦¬à¦‚ à¦¨à¦¿à¦°à¦¾à¦ªà¦¤à§à¦¤à¦¾ à¦¸à¦¤à¦°à§à¦•à¦¤à¦¾ à¦¬à¦¨à§à¦§ à¦¹à¦¯à¦¼à§‡à¦›à§‡à¥¤",
+
+        browserBlocked:
+            "à¦†à¦ªà¦¨à¦¾à¦° à¦¬à§à¦°à¦¾à¦‰à¦œà¦¾à¦°à§‡ à¦¬à¦¿à¦œà§à¦žà¦ªà§à¦¤à¦¿ à¦¬à§à¦²à¦• à¦•à¦°à¦¾ à¦†à¦›à§‡à¥¤ à¦…à¦¨à§à¦—à§à¦°à¦¹ à¦•à¦°à§‡ à¦¬à§à¦°à¦¾à¦‰à¦œà¦¾à¦° à¦¸à§‡à¦Ÿà¦¿à¦‚à¦¸à§‡ TruthLens-à¦à¦° à¦œà¦¨à§à¦¯ à¦¬à¦¿à¦œà§à¦žà¦ªà§à¦¤à¦¿ à¦…à¦¨à§à¦®à¦¤à¦¿ à¦¦à¦¿à¦¨à¥¤"
+
+    }
+
+};
+
+
+function getNotificationSettingText() {
+
+    return (
+        notificationSettingTranslations[
+            getCurrentLanguage()
+        ] ||
+        notificationSettingTranslations.English
+    );
+
+}
+
+
+/* =========================================================
+   ANALYSIS NOTIFICATION PERMISSION
+========================================================= */
+
+async function requestAnalysisNotificationPermission() {
+
+    const granted =
+        await requestBrowserNotificationPermission();
+
+
+    if (!granted) {
+
+        if (analysisNotifications) {
+
+            analysisNotifications.checked =
+                false;
+
+        }
+
+
+        localStorage.setItem(
+            "analysisNotifications",
+            "false"
+        );
+
+
+        if (
+            "Notification" in window &&
+            Notification.permission ===
+                "denied"
+        ) {
+
+            const messages =
+                getNotificationSettingText();
+
+
+            alert(
+                messages.browserBlocked
+            );
+
+        }
+
+    }
+
+
+    return granted;
+
+}
+
+
+/* =========================================================
+   ANALYSIS NOTIFICATION TOGGLE
+========================================================= */
+
+if (analysisNotifications) {
+
+    analysisNotifications.checked =
+        getSavedBoolean(
+            "analysisNotifications",
+            true
+        );
+
+
+    analysisNotifications.addEventListener(
+        "change",
+        async function () {
+
+            const enabled =
+                this.checked;
+
+
+            localStorage.setItem(
+                "analysisNotifications",
+                enabled
+                    ? "true"
+                    : "false"
+            );
+
+
+           const messages =
+    getNotificationSettingText();
+
+
+if (enabled) {
+
+    const granted =
+        await requestAnalysisNotificationPermission();
+
+    if (granted) {
+
+        addTruthLensNotification(
+            messages.analysisEnabledTitle,
+            messages.analysisEnabledMessage,
+            "settings"
+        );
+
+    }
+
+} else {
+
+    addTruthLensNotification(
+        messages.analysisDisabledTitle,
+        messages.analysisDisabledMessage,
+        "settings"
+    );
+
+}
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   SECURITY NOTIFICATION TOGGLE
+========================================================= */
+
+if (securityNotifications) {
+
+    securityNotifications.checked =
+        getSavedBoolean(
+            "securityNotifications",
+            true
+        );
+
+
+    securityNotifications.addEventListener(
+        "change",
+        function () {
+
+            const enabled =
+                this.checked;
+
+
+            localStorage.setItem(
+                "securityNotifications",
+                enabled
+                    ? "true"
+                    : "false"
+            );
+
+
+            const messages =
+    getNotificationSettingText();
+
+
+if (enabled) {
+
+    addTruthLensNotification(
+        messages.securityEnabledTitle,
+        messages.securityEnabledMessage,
+        "security"
+    );
+
+} else {
+
+    addTruthLensNotification(
+        messages.securityDisabledTitle,
+        messages.securityDisabledMessage,
+        "security"
+    );
+
+}
+        }
+    );
+
+}
+
+
+/* =========================================================
+   LOGOUT
+========================================================= */
+
+const logoutButton =
+    document.getElementById(
+        "logoutButton"
+    );
+
+
+const logoutTranslations = {
+
+    English: {
+
+        confirm:
+            "Are you sure you want to log out?"
+
+    },
+
+    Hindi: {
+
+        confirm:
+            "à¤•à¥à¤¯à¤¾ à¤†à¤ª à¤µà¤¾à¤•à¤ˆ à¤²à¥‰à¤— à¤†à¤‰à¤Ÿ à¤•à¤°à¤¨à¤¾ à¤šà¤¾à¤¹à¤¤à¥‡ à¤¹à¥ˆà¤‚?"
+
+    },
+
+
+    Bengali: {
+
+        confirm:
+            "à¦†à¦ªà¦¨à¦¿ à¦•à¦¿ à¦¸à¦¤à§à¦¯à¦¿à¦‡ à¦²à¦— à¦†à¦‰à¦Ÿ à¦•à¦°à¦¤à§‡ à¦šà¦¾à¦¨?"
+
+    }
+
+};
+
+
+if (logoutButton) {
+
+    logoutButton.addEventListener(
+        "click",
+        function () {
+
+            const language =
+                getCurrentLanguage();
+
+
+            const messages =
+                logoutTranslations[
+                    language
+                ] ||
+                logoutTranslations.English;
+
+
+            const shouldLogout =
+                confirm(
+                    messages.confirm
+                );
+
+
+            if (!shouldLogout) {
+
+                return;
+
+            }
+/* -----------------------------------------
+   Logout notification
+----------------------------------------- */
+
+if (
+    getSavedBoolean(
+        "securityNotifications",
+        true
+    )
+) {
+
+    const logoutMessages = {
+
+        English: {
+
+            title:
+                "Logged Out",
+
+            message:
+                "You have successfully logged out of TruthLens."
+
+        },
+
+        Hindi: {
+
+            title:
+                "à¤²à¥‰à¤— à¤†à¤‰à¤Ÿ à¤¹à¥‹ à¤—à¤¯à¤¾",
+
+            message:
+                "à¤†à¤ª TruthLens à¤¸à¥‡ à¤¸à¤«à¤²à¤¤à¤¾à¤ªà¥‚à¤°à¥à¤µà¤• à¤²à¥‰à¤— à¤†à¤‰à¤Ÿ à¤¹à¥‹ à¤—à¤ à¤¹à¥ˆà¤‚à¥¤"
+
+        },
+
+        Bengali: {
+
+            title:
+                "à¦²à¦— à¦†à¦‰à¦Ÿ à¦¹à¦¯à¦¼à§‡à¦›à§‡",
+
+            message:
+                "à¦†à¦ªà¦¨à¦¿ TruthLens à¦¥à§‡à¦•à§‡ à¦¸à¦«à¦²à¦­à¦¾à¦¬à§‡ à¦²à¦— à¦†à¦‰à¦Ÿ à¦•à¦°à§‡à¦›à§‡à¦¨à¥¤"
+
+        }
+
+    };
+
+
+    const selectedLogoutMessages =
+        logoutMessages[
+            getCurrentLanguage()
+        ] ||
+        logoutMessages.English;
+
+
+    addTruthLensNotification(
+        selectedLogoutMessages.title,
+        selectedLogoutMessages.message,
+        "security"
+    );
+
+}
+
+            /* -----------------------------------------
+               Remove all TruthLens login information
+            ----------------------------------------- */
+
+            localStorage.removeItem(
+                "truthlensUser"
+            );
+
+
+            localStorage.removeItem(
+    "truthlensRememberMe"
+);
+
+
+localStorage.removeItem(
+    "truthlensAccessToken"
+);
+
+
+sessionStorage.removeItem(
+    "truthlensUser"
+);
+
+
+sessionStorage.removeItem(
+    "truthlensRememberMe"
+);
+
+
+sessionStorage.removeItem(
+    "truthlensAccessToken"
+);
+
+            /* -----------------------------------------
+               Clear visible profile
+            ----------------------------------------- */
+
+            clearProfileDisplay();
+
+
+            /* -----------------------------------------
+               Mark user as logged out
+            ----------------------------------------- */
+
+            localStorage.setItem(
+                "truthlensLoggedOut",
+                "true"
+            );
+
+
+            /* -----------------------------------------
+               Go to login page
+            ----------------------------------------- */
+
+            window.location.href =
+                "login.html";
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   LOGIN
+========================================================= */
+
+/* ---------------------------------------------
+   Clear login fields after logout
+--------------------------------------------- */
+
+if (
+    localStorage.getItem(
+        "truthlensLoggedOut"
+    ) === "true"
+) {
+
+    const loginEmailField =
+        document.getElementById(
+            "professionalEmail"
+        );
+
+
+    const loginPasswordField =
+        document.getElementById(
+            "professionalPassword"
+        );
+
+
+    const loginRememberMe =
+        document.getElementById(
+            "rememberMe"
+        );
+
+
+    if (loginEmailField) {
+
+        loginEmailField.value =
+            "";
+
+        loginEmailField.removeAttribute(
+            "value"
+        );
+
+    }
+
+
+    if (loginPasswordField) {
+
+        loginPasswordField.value =
+            "";
+
+        loginPasswordField.removeAttribute(
+            "value"
+        );
+
+    }
+
+
+    if (loginRememberMe) {
+
+        loginRememberMe.checked =
+            false;
+
+    }
+
+}
+
+
+const professionalLoginForm =
+    document.getElementById(
+        "professionalLoginForm"
+    );
+
+
+const professionalLoginMessage =
+    document.getElementById(
+        "professionalLoginMessage"
+    );
+
+
+const professionalGuestButton =
+    document.getElementById(
+        "professionalGuestButton"
+    );
+
+
+const togglePassword =
+    document.getElementById(
+        "togglePassword"
+    );
+
+
+const professionalPassword =
+    document.getElementById(
+        "professionalPassword"
+    );
+
+
+const forgotPassword =
+    document.getElementById(
+        "forgotPassword"
+    );
+
+
+const rememberMe =
+    document.getElementById(
+        "rememberMe"
+    );
+
+
+/* =========================================================
+   LOGIN TRANSLATIONS FOR JS MESSAGES
+========================================================= */
+
+const loginMessageTranslations = {
+
+    English: {
+
+        emailPassword:
+            "Please enter your email and password.",
+
+        validEmail:
+            "Please enter a valid email address.",
+
+        success:
+            "Login successful! Welcome to TruthLens.",
+
+        forgot:
+            "Password recovery will be available in a future version."
+
+    },
+
+
+    Hindi: {
+
+        emailPassword:
+            "à¤•à¥ƒà¤ªà¤¯à¤¾ à¤…à¤ªà¤¨à¤¾ à¤ˆà¤®à¥‡à¤² à¤”à¤° à¤ªà¤¾à¤¸à¤µà¤°à¥à¤¡ à¤¦à¤°à¥à¤œ à¤•à¤°à¥‡à¤‚à¥¤",
+
+        validEmail:
+            "à¤•à¥ƒà¤ªà¤¯à¤¾ à¤à¤• à¤®à¤¾à¤¨à¥à¤¯ à¤ˆà¤®à¥‡à¤² à¤ªà¤¤à¤¾ à¤¦à¤°à¥à¤œ à¤•à¤°à¥‡à¤‚à¥¤",
+
+        success:
+            "à¤²à¥‰à¤—à¤¿à¤¨ à¤¸à¤«à¤² à¤°à¤¹à¤¾! TruthLens à¤®à¥‡à¤‚ à¤†à¤ªà¤•à¤¾ à¤¸à¥à¤µà¤¾à¤—à¤¤ à¤¹à¥ˆà¥¤",
+
+        forgot:
+            "à¤ªà¤¾à¤¸à¤µà¤°à¥à¤¡ à¤°à¤¿à¤•à¤µà¤°à¥€ à¤­à¤µà¤¿à¤·à¥à¤¯ à¤•à¥‡ à¤¸à¤‚à¤¸à¥à¤•à¤°à¤£ à¤®à¥‡à¤‚ à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¹à¥‹à¤—à¥€à¥¤"
+
+    },
+
+
+    Bengali: {
+
+        emailPassword:
+            "à¦…à¦¨à§à¦—à§à¦°à¦¹ à¦•à¦°à§‡ à¦†à¦ªà¦¨à¦¾à¦° à¦‡à¦®à§‡à¦² à¦à¦¬à¦‚ à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦²à¦¿à¦–à§à¦¨à¥¤",
+
+        validEmail:
+            "à¦…à¦¨à§à¦—à§à¦°à¦¹ à¦•à¦°à§‡ à¦à¦•à¦Ÿà¦¿ à¦¬à§ˆà¦§ à¦‡à¦®à§‡à¦² à¦ à¦¿à¦•à¦¾à¦¨à¦¾ à¦²à¦¿à¦–à§à¦¨à¥¤",
+
+        success:
+            "à¦²à¦—à¦‡à¦¨ à¦¸à¦«à¦² à¦¹à¦¯à¦¼à§‡à¦›à§‡! TruthLens-à¦ à¦¸à§à¦¬à¦¾à¦—à¦¤à¦®à¥¤",
+
+        forgot:
+            "à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦ªà§à¦¨à¦°à§à¦¦à§à¦§à¦¾à¦° à¦­à¦¬à¦¿à¦·à§à¦¯à¦¤à§‡à¦° à¦¸à¦‚à¦¸à§à¦•à¦°à¦£à§‡ à¦‰à¦ªà¦²à¦¬à§à¦§ à¦¹à¦¬à§‡à¥¤"
+
+    }
+
+};
+
+
+function getLoginMessageText() {
+
+    return (
+        loginMessageTranslations[
+            getCurrentLanguage()
+        ] ||
+        loginMessageTranslations.English
+    );
+
+}
+
+
+/* =========================================================
+   SHOW / HIDE PASSWORD
+========================================================= */
+
+if (
+    togglePassword &&
+    professionalPassword
+) {
+
+    togglePassword.addEventListener(
+        "click",
+        function () {
+
+            if (
+                professionalPassword.type ===
+                "password"
+            ) {
+
+                professionalPassword.type =
+                    "text";
+
+
+                togglePassword.textContent =
+                    "ðŸ™ˆ";
+
+
+                togglePassword.setAttribute(
+                    "aria-label",
+                    "Hide password"
+                );
+
+            } else {
+
+                professionalPassword.type =
+                    "password";
+
+
+                togglePassword.textContent =
+                    "ðŸ‘ï¸";
+
+
+                togglePassword.setAttribute(
+                    "aria-label",
+                    "Show password"
+                );
+
+            }
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   CREATE NAME FROM EMAIL
+========================================================= */
+
+function createNameFromEmail(email) {
+
+    const username =
+        email.split("@")[0];
+
+
+    return (
+        username
+            .replace(
+                /[._-]+/g,
+                " "
+            )
+            .replace(
+                /\s+/g,
+                " "
+            )
+            .trim()
+            .replace(
+                /\b\w/g,
+                letter =>
+                    letter.toUpperCase()
+            ) ||
+        "TruthLens User"
+    );
+
+}
+
+/* =========================================================
+   LOGIN FORM - BACKEND AUTHENTICATION
+========================================================= */
+
+if (professionalLoginForm) {
+
+    professionalLoginForm.addEventListener(
+        "submit",
+        async function (event) {
+
+            event.preventDefault();
+
+            const emailInput =
+                document.getElementById(
+                    "professionalEmail"
+                );
+
+            const passwordInput =
+                document.getElementById(
+                    "professionalPassword"
+                );
+
+            const email =
+                emailInput
+                    ? emailInput.value.trim()
+                    : "";
+
+            const password =
+                passwordInput
+                    ? passwordInput.value
+                    : "";
+
+            /* ---------------------------------------------
+               Basic validation
+            --------------------------------------------- */
+
+            if (!professionalLoginMessage) {
+                return;
+            }
+
+            professionalLoginMessage.style.color =
+                "#dc2626";
+
+            if (!email || !password) {
+
+                professionalLoginMessage.textContent =
+                    "Please enter your email and password.";
+
+                return;
+            }
+
+            if (
+                !email.includes("@") ||
+                !email.includes(".")
+            ) {
+
+                professionalLoginMessage.textContent =
+                    "Please enter a valid email address.";
+
+                return;
+            }
+
+
+            /* ---------------------------------------------
+               Show loading message
+            --------------------------------------------- */
+
+            professionalLoginMessage.style.color =
+                "#6b7280";
+
+            professionalLoginMessage.textContent =
+                "Signing in...";
+
+
+            try {
+
+                /* -----------------------------------------
+                   Send login request to FastAPI
+                ----------------------------------------- */
+
+                const response =
+                    await fetch(
+                        "http://127.0.0.1:8000/login",
+                        {
+                            method: "POST",
+
+                            headers: {
+                                "Content-Type":
+                                    "application/json"
+                            },
+
+                            body:
+                                JSON.stringify({
+                                    email: email,
+                                    password: password
+                                })
+                        }
+                    );
+
+
+                /* -----------------------------------------
+                   Read backend response
+                ----------------------------------------- */
+
+                const data =
+                    await response.json();
+
+
+                /* -----------------------------------------
+                   Handle login error
+                ----------------------------------------- */
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        data.detail ||
+                        "Invalid email or password."
+                    );
+
+                }
+
+
+                /* -----------------------------------------
+                   Backend login successful
+                ----------------------------------------- */
+
+                const user =
+                    data.user;
+
+
+                const accessToken =
+                    data.access_token;
+
+
+                if (!user || !accessToken) {
+
+                    throw new Error(
+                        "Invalid response from authentication server."
+                    );
+
+                }
+
+
+                /* -----------------------------------------
+                   Save authentication information
+                ----------------------------------------- */
+
+                localStorage.removeItem(
+                    "truthlensLoggedOut"
+                );
+
+
+                localStorage.setItem(
+                    "truthlensUser",
+                    JSON.stringify({
+                        id: user.id,
+                        name: user.name,
+                        email: user.email,
+                        isGuest: false
+                    })
+                );
+
+
+                /* -----------------------------------------
+                   Save JWT token
+                ----------------------------------------- */
+
+                if (rememberMe && rememberMe.checked) {
+
+    localStorage.setItem(
+        "truthlensAccessToken",
+        accessToken
+    );
+
+    localStorage.setItem(
+        "truthlensUser",
+        JSON.stringify({
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            isGuest: false
+        })
+    );
+
+    localStorage.setItem(
+        "truthlensRememberMe",
+        "true"
+    );
+
+} else {
+
+    sessionStorage.setItem(
+        "truthlensAccessToken",
+        accessToken
+    );
+
+    sessionStorage.setItem(
+        "truthlensUser",
+        JSON.stringify({
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            isGuest: false
+        })
+    );
+
+    localStorage.removeItem(
+        "truthlensAccessToken"
+    );
+
+    localStorage.removeItem(
+        "truthlensUser"
+    );
+
+    localStorage.setItem(
+        "truthlensRememberMe",
+        "false"
+    );
+}
+                /* -----------------------------------------
+                   Success message
+                ----------------------------------------- */
+
+                professionalLoginMessage.style.color =
+                    "#16a34a";
+
+                professionalLoginMessage.textContent =
+                    "Login successful! Welcome to TruthLens.";
+
+
+                /* -----------------------------------------
+                   Security notification
+                ----------------------------------------- */
+
+                if (
+                    getSavedBoolean(
+                        "securityNotifications",
+                        true
+                    )
+                ) {
+
+                    addTruthLensNotification(
+                        "New Login",
+                        "A new login to your TruthLens account was detected.",
+                        "security"
+                    );
+
+                }
+
+
+                /* -----------------------------------------
+                   Redirect to Home
+                ----------------------------------------- */
+
+                setTimeout(
+                    function () {
+
+                        window.location.href =
+                            "index.html";
+
+                    },
+                    700
+                );
+
+            } catch (error) {
+
+                console.error(
+                    "Login error:",
+                    error
+                );
+
+                professionalLoginMessage.style.color =
+                    "#dc2626";
+
+                professionalLoginMessage.textContent =
+                    error.message ||
+                    "Unable to login. Please try again.";
+
+            }
+
+        }
+    );
+
+}
+
+/* =========================================================
+   GUEST LOGIN
+========================================================= */
+
+if (professionalGuestButton) {
+
+    professionalGuestButton.addEventListener(
+        "click",
+        function () {
+
+            const guestUser = {
+
+                name:
+                    "Guest User",
+
+                email:
+                    "Guest",
+
+                isGuest:
+                    true
+
+            };
+
+
+            /* Guest access is active login */
+
+            localStorage.removeItem(
+                "truthlensLoggedOut"
+            );
+
+
+            localStorage.setItem(
+                "truthlensUser",
+                JSON.stringify(
+                    guestUser
+                )
+            );
+
+
+            localStorage.removeItem(
+    "truthlensRememberMe"
+);
+
+
+/* -----------------------------------------
+   Guest login notification
+----------------------------------------- */
+
+if (
+    getSavedBoolean(
+        "securityNotifications",
+        true
+    )
+) {
+
+    const guestLoginMessages = {
+
+        English: {
+
+            title:
+                "Guest Login",
+
+            message:
+                "Guest access to TruthLens is now active."
+
+        },
+
+        Hindi: {
+
+            title:
+                "à¤…à¤¤à¤¿à¤¥à¤¿ à¤²à¥‰à¤—à¤¿à¤¨",
+
+            message:
+                "TruthLens à¤®à¥‡à¤‚ à¤…à¤¤à¤¿à¤¥à¤¿ à¤à¤•à¥à¤¸à¥‡à¤¸ à¤…à¤¬ à¤¸à¤•à¥à¤°à¤¿à¤¯ à¤¹à¥ˆà¥¤"
+
+        },
+
+        Bengali: {
+
+            title:
+                "à¦—à§‡à¦¸à§à¦Ÿ à¦²à¦—à¦‡à¦¨",
+
+            message:
+                "TruthLens-à¦ à¦—à§‡à¦¸à§à¦Ÿ à¦…à§à¦¯à¦¾à¦•à§à¦¸à§‡à¦¸ à¦à¦–à¦¨ à¦¸à¦•à§à¦°à¦¿à¦¯à¦¼à¥¤"
+
+        }
+
+    };
+
+
+    const selectedGuestMessages =
+        guestLoginMessages[
+            getCurrentLanguage()
+        ] ||
+        guestLoginMessages.English;
+
+
+    addTruthLensNotification(
+        selectedGuestMessages.title,
+        selectedGuestMessages.message,
+        "security"
+    );
+
+}
+
+window.location.href =
+    "index.html";
+
+        }
+    );
+
+}
+
+/* =========================================================
+   FORGOT PASSWORD
+========================================================= */
+
+if (forgotPassword) {
+
+    forgotPassword.addEventListener(
+        "click",
+        function (event) {
+
+            event.preventDefault();
+
+
+            const messages =
+                getLoginMessageText();
+
+
+            alert(
+                messages.forgot
+            );
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   SUPPORT MODALS
+========================================================= */
+
+function setupModal(
+    buttonId,
+    modalId,
+    closeId
+) {
+
+    const button =
+        document.getElementById(
+            buttonId
+        );
+
+
+    const modal =
+        document.getElementById(
+            modalId
+        );
+
+
+    const closeButton =
+        document.getElementById(
+            closeId
+        );
+
+
+    if (button && modal) {
+
+        button.addEventListener(
+            "click",
+            function () {
+
+                modal.classList.add(
+                    "active"
+                );
+
+            }
+        );
+
+    }
+
+
+    if (closeButton && modal) {
+
+        closeButton.addEventListener(
+            "click",
+            function () {
+
+                modal.classList.remove(
+                    "active"
+                );
+
+            }
+        );
+
+    }
+
+
+    if (modal) {
+
+        modal.addEventListener(
+            "click",
+            function (event) {
+
+                if (
+                    event.target ===
+                    modal
+                ) {
+
+                    modal.classList.remove(
+                        "active"
+                    );
+
+                }
+
+            }
+        );
+
+    }
+
+
+    return modal;
+
+}
+
+
+const helpModal =
+    setupModal(
+        "helpButton",
+        "helpModal",
+        "closeHelpModal"
+    );
+
+
+const aboutModal =
+    setupModal(
+        "aboutButton",
+        "aboutModal",
+        "closeAboutModal"
+    );
+
+
+const privacyModal =
+    setupModal(
+        "privacyButton",
+        "privacyModal",
+        "closePrivacyModal"
+    );
+
+
+/* =========================================================
+   ESCAPE KEY FOR MODALS
+========================================================= */
+
+document.addEventListener(
+    "keydown",
+    function (event) {
+
+        if (event.key !== "Escape") {
+
+            return;
+
+        }
+
+
+        [
+            helpModal,
+            aboutModal,
+            privacyModal
+        ].forEach(
+            function (modal) {
+
+                if (
+                    modal &&
+                    modal.classList.contains(
+                        "active"
+                    )
+                ) {
+
+                    modal.classList.remove(
+                        "active"
+                    );
+
+                }
+
+            }
+        );
+
+    }
+);
+
+
+/* =========================================================
+   FINAL REFRESH
+========================================================= */
+
+applyTheme(
+    localStorage.getItem(
+        "theme"
+    ) || "light"
+);
+
+
+/*
+ * Apply the saved language once the complete
+ * JavaScript file has been initialized.
+ */
+
+applyLanguage(
+    localStorage.getItem(
+        "language"
+    ) || "English"
+);
+
+
+/*
+ * Refresh profile after language initialization.
+ * This keeps the profile text synchronized.
+ */
+
+displayUser(
+    getSavedUser()
+);
+
+
+/*
+ * Final notification refresh.
+ */
+
+renderTruthLensNotifications();
+/* =========================================================
+   PROFILE PICTURE
+========================================================= */
+
+if (profilePictureInput) {
+
+    profilePictureInput.addEventListener(
+        "change",
+        function () {
+
+            const file = this.files[0];
+
+            if (!file) {
+                return;
+            }
+
+            if (!file.type.startsWith("image/")) {
+
+                alert("Please select an image file.");
+
+                this.value = "";
+
+                return;
+            }
+
+            const reader = new FileReader();
+
+            reader.onload = function (event) {
+
+                const currentUser = getSavedUser();
+
+                if (!currentUser) {
+
+                    alert("Please login first.");
+
+                    profilePictureInput.value = "";
+
+                    return;
+                }
+
+                currentUser.profilePicture = event.target.result;
+
+const accessToken =
+    sessionStorage.getItem("truthlensAccessToken") ||
+    localStorage.getItem("truthlensAccessToken");
+
+if (sessionStorage.getItem("truthlensAccessToken")) {
+
+    sessionStorage.setItem(
+        "truthlensUser",
+        JSON.stringify(currentUser)
+    );
+
+} else {
+
+    localStorage.setItem(
+        "truthlensUser",
+        JSON.stringify(currentUser)
+    );
+}
+
+                displayUser(currentUser);
+
+                alert(
+                    "Profile picture updated successfully."
+                );
+            };
+
+            reader.readAsDataURL(file);
+        }
+    );
+}
+
+/* =========================================================
+   TRUTHLENS - USER REGISTRATION
+========================================================= */
+
+const registerForm = document.getElementById("registerForm");
+
+const registerName =
+    document.getElementById("registerName");
+
+const registerEmail =
+    document.getElementById("registerEmail");
+
+const registerPassword =
+    document.getElementById("registerPassword");
+
+const confirmPassword =
+    document.getElementById("confirmPassword");
+
+const registerMessage =
+    document.getElementById("registerMessage");
+
+
+/* =========================================================
+   PASSWORD VISIBILITY
+========================================================= */
+
+const toggleRegisterPassword =
+    document.getElementById("toggleRegisterPassword");
+
+const toggleConfirmPassword =
+    document.getElementById("toggleConfirmPassword");
+
+
+if (toggleRegisterPassword) {
+
+    toggleRegisterPassword.addEventListener(
+        "click",
+        function () {
+
+            if (registerPassword.type === "password") {
+
+                registerPassword.type = "text";
+
+                this.textContent = "ðŸ™ˆ";
+
+            } else {
+
+                registerPassword.type = "password";
+
+                this.textContent = "ðŸ‘ï¸";
+            }
+
+        }
+    );
+}
+
+
+if (toggleConfirmPassword) {
+
+    toggleConfirmPassword.addEventListener(
+        "click",
+        function () {
+
+            if (confirmPassword.type === "password") {
+
+                confirmPassword.type = "text";
+
+                this.textContent = "ðŸ™ˆ";
+
+            } else {
+
+                confirmPassword.type = "password";
+
+                this.textContent = "ðŸ‘ï¸";
+            }
+
+        }
+    );
+}
+
+/* =========================================================
+   REGISTRATION FORM
+========================================================= */
+
+if (registerForm) {
+
+    registerForm.addEventListener(
+        "submit",
+        async function (event) {
+
+            event.preventDefault();
+
+
+            const name =
+                registerName.value.trim();
+
+            const email =
+                registerEmail.value.trim();
+
+            const password =
+                registerPassword.value;
+
+            const confirmPasswordValue =
+                confirmPassword.value;
+
+
+            /* ---------------------------------------------
+               Clear previous message
+            --------------------------------------------- */
+
+            registerMessage.textContent = "";
+
+            registerMessage.className =
+                "login-message";
+
+
+            /* ---------------------------------------------
+               Validate name
+            --------------------------------------------- */
+
+            if (!name) {
+
+                registerMessage.textContent =
+                    "Please enter your full name.";
+
+                registerMessage.classList.add("error");
+
+                return;
+            }
+
+
+            /* ---------------------------------------------
+               Validate email
+            --------------------------------------------- */
+
+            if (
+                !email ||
+                !email.includes("@") ||
+                !email.includes(".")
+            ) {
+
+                registerMessage.textContent =
+                    "Please enter a valid email address.";
+
+                registerMessage.classList.add("error");
+
+                return;
+            }
+
+
+            /* ---------------------------------------------
+               Validate password
+            --------------------------------------------- */
+
+            if (password.length < 6) {
+
+                registerMessage.textContent =
+                    "Password must contain at least 6 characters.";
+
+                registerMessage.classList.add("error");
+
+                return;
+            }
+
+
+            /* ---------------------------------------------
+               Confirm password
+            --------------------------------------------- */
+
+            if (password !== confirmPasswordValue) {
+
+                registerMessage.textContent =
+                    "Passwords do not match.";
+
+                registerMessage.classList.add("error");
+
+                return;
+            }
+
+
+            /* ---------------------------------------------
+               Disable button while registering
+            --------------------------------------------- */
+
+            const registerButton =
+                registerForm.querySelector(
+                    "button[type='submit']"
+                );
+
+
+            if (registerButton) {
+
+                registerButton.disabled = true;
+
+                registerButton.textContent =
+                    "Creating Account...";
+            }
+
+
+            try {
+
+                /* -----------------------------------------
+                   Send registration request
+                ----------------------------------------- */
+
+                const response =
+                    await fetch(
+                        "http://127.0.0.1:8000/register",
+                        {
+                            method: "POST",
+
+                            headers: {
+                                "Content-Type":
+                                    "application/json"
+                            },
+
+                            body: JSON.stringify({
+                                name: name,
+                                email: email,
+                                password: password
+                            })
+                        }
+                    );
+
+
+                const data =
+                    await response.json();
+
+
+                /* -----------------------------------------
+                   Registration failed
+                ----------------------------------------- */
+
+                if (!response.ok) {
+
+                    registerMessage.textContent =
+                        data.detail ||
+                        "Registration failed.";
+
+                    registerMessage.classList.add(
+                        "error"
+                    );
+
+                    return;
+                }
+
+
+                /* -----------------------------------------
+                   Registration successful
+                ----------------------------------------- */
+
+                registerMessage.textContent =
+                    "Account created successfully! Redirecting to login...";
+
+                registerMessage.classList.add(
+                    "success"
+                );
+
+
+                /* -----------------------------------------
+                   Clear password fields
+                ----------------------------------------- */
+
+                registerPassword.value = "";
+
+                confirmPassword.value = "";
+
+
+                /* -----------------------------------------
+                   Go to login page
+                ----------------------------------------- */
+localStorage.setItem(
+    "truthlensRegistered",
+    "true"
+);
+
+                setTimeout(
+                    function () {
+
+                        window.location.href =
+                            "login.html";
+
+                    },
+                    1500
+                );
+
+
+            } catch (error) {
+
+                console.error(
+                    "Registration error:",
+                    error
+                );
+
+
+                registerMessage.textContent =
+                    "Unable to connect to the TruthLens server.";
+
+                registerMessage.classList.add(
+                    "error"
+                );
+
+
+            } finally {
+
+                if (registerButton) {
+
+                    registerButton.disabled = false;
+
+                    registerButton.textContent =
+                        "Create Account";
+                }
+
+            }
+
+        }
+    );
+    /* =========================================================
+   CONTINUE AS GUEST
+========================================================= */
+
+const continueAsGuest =
+    document.getElementById("continueAsGuest");
+
+if (continueAsGuest) {
+
+    continueAsGuest.addEventListener(
+        "click",
+        function () {
+
+            localStorage.setItem(
+                "truthlensUser",
+                JSON.stringify({
+                    name: "Guest User",
+                    email: "Guest",
+                    isGuest: true
+                })
+            );
+
+            localStorage.setItem(
+                "truthlensLoggedOut",
+                "false"
+            );
+
+            window.location.href =
+                "index.html";
+        }
+    );
+}
+}
+

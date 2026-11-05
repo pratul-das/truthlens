@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Register - TruthLens</title>
+
+    <link
+        rel="stylesheet"
+        href="style.css"
+    >
+
+</head>
+
+
+<body>
+
+    <!-- =====================================================
+         NAVIGATION
+    ====================================================== -->
+
+    <header class="navbar">
+
+        <div class="logo">
+
+            <span class="truthlens-3d">
+
+                <span class="truthlens-base">
+                    TRUTHLENS
+                </span>
+
+                <span class="truthlens-color">
+                    TRUTHLENS
+                </span>
+
+            </span>
+
+        </div>
+
+
+        <nav>
+    <a href="index.html" data-i18n="navHome">Home</a>
+    <a href="settings.html" data-i18n="navSettings">Settings</a>
+    <a href="login.html" data-i18n="navLogin">Login</a>
+    <a href="register.html" class="active" data-i18n="navRegister">Register</a>
+</nav>
+
+    </header>
+
+
+
+    <!-- =====================================================
+         REGISTRATION PAGE
+    ====================================================== -->
+
+    <main class="register-page">
+
+
+        <!-- LEFT SIDE -->
+
+        <section class="register-intro">
+
+            <div class="register-trust">
+
+                🛡️
+
+                <span>
+                    Trusted AI Verification
+                </span>
+
+            </div>
+
+
+           <h1 data-i18n="registerIntroTitle">
+    Create your TruthLens account
+</h1>
+
+            <p>
+
+                Verify information, explore the facts,
+                and stay informed with confidence.
+
+            </p>
+
+<div class="brand-features">
+
+
+            <div data-i18n="loginFeature1">
+                ✓ AI-powered news analysis
+            </div>
+
+
+            <div data-i18n="loginFeature2">
+                ✓ Fast and simple verification
+            </div>
+
+
+            <div data-i18n="loginFeature3">
+                ✓ Designed for trustworthy information
+            </div>
+
+
+        </div>
+            
+
+        </section>
+
+
+
+        <!-- RIGHT SIDE -->
+
+        <section class="register-card">
+
+
+            <div class="register-card-inner">
+
+    <div class="register-language">
+
+        <label for="registerLanguage">
+            Language
+        </label>
+
+        <select id="registerLanguage">
+
+            <option value="English">
+                English
+            </option>
+
+            <option value="Hindi">
+                हिन्दी
+            </option>
+
+            <option value="Bengali">
+                বাংলা
+            </option>
+
+        </select>
+
+    </div>
+
+
+    <h2 data-i18n="registerTitle">
+    Create Account
+</h2>
+
+
+                <p class="register-subtitle" data-i18n="registerSubtitle">
+                          Create your TruthLens account
+                </p>
+
+
+                <!-- REGISTRATION FORM -->
+
+                <form id="registerForm">
+
+
+                    <!-- FULL NAME -->
+
+                    <div class="register-form-group">
+
+                        <label for="registerName" data-i18n="fullName">
+                             Full Name
+                        </label>
+
+                        <input
+                            type="text"
+                            id="registerName"
+                            name="name"
+                            placeholder="Enter your full name"
+                            autocomplete="name"
+                            required
+                        >
+
+                    </div>
+
+
+
+                    <!-- EMAIL -->
+
+                    <div class="register-form-group">
+
+                        <label for="registerEmail" data-i18n="emailAddress">
+                             Email Address
+                         </label>
+
+                        <input
+                            type="email"
+                            id="registerEmail"
+                            name="email"
+                            placeholder="you@example.com"
+                            autocomplete="email"
+                            required
+                        >
+
+                    </div>
+
+
+
+                    <!-- PASSWORD -->
+
+                    <div class="register-form-group">
+
+                        <label for="registerPassword" data-i18n="password">
+                            Password
+                        </label>
+
+
+                        <div class="register-password-wrapper">
+
+                            <input
+                                type="password"
+                                id="registerPassword"
+                                name="password"
+                                placeholder="Create a password"
+                                autocomplete="new-password"
+                                required
+                            >
+
+
+                            <button
+                                type="button"
+                                id="toggleRegisterPassword"
+                                class="register-password-toggle"
+                                aria-label="Show password"
+                            >
+                                👁️
+                            </button>
+
+                        </div>
+
+                    </div>
+
+
+
+                    <!-- CONFIRM PASSWORD -->
+
+                    <div class="register-form-group">
+
+                        <label for="confirmPassword" data-i18n="confirmPassword">
+                              Confirm Password
+                        </label>
+
+
+                        <div class="register-password-wrapper">
+
+                            <input
+                                type="password"
+                                id="confirmPassword"
+                                name="confirmPassword"
+                                placeholder="Confirm your password"
+                                autocomplete="new-password"
+                                required
+                            >
+
+
+                            <button
+                                type="button"
+                                id="toggleConfirmPassword"
+                                class="register-password-toggle"
+                                aria-label="Show password"
+                            >
+                                👁️
+                            </button>
+
+                        </div>
+
+                    </div>
+
+
+
+                    <!-- MESSAGE -->
+
+                    <p
+                        id="registerMessage"
+                        class="register-message"
+                    ></p>
+
+
+
+                    <!-- BUTTON -->
+
+                    <button 
+    type="submit" 
+    class="register-submit-button" 
+    data-i18n="registerButton"
+>
+    Create Account 
+</button>
+
+
+                </form>
+
+
+
+                <!-- LOGIN LINK -->
+
+                <p class="register-login-text">
+
+    <span data-i18n="alreadyHaveAccount">
+        Already have an account?
+    </span>
+
+    <a
+    href="login.html"
+    onclick="
+        localStorage.removeItem('truthlensUser');
+        sessionStorage.setItem('truthlensLoginIntent', 'true');
+    "
+>
+    Login
+</a>
+
+</p>
+
+<!-- =================================================
+             GUEST ACCESS
+        ================================================== -->
+
+        <div class="guest-divider">
+
+            <span data-i18n="loginOr">
+                OR
+            </span>
+
+        </div>
+
+
+        <button
+            type="button"
+            id="professionalGuestButton"
+            class="professional-guest-button"
+            data-i18n="loginGuest"
+        >
+
+            Continue as Guest
+
+        </button>
+
+            </div>
+
+        </section>
+
+
+    </main>
+
+
+
+    <!-- =====================================================
+         JAVASCRIPT
+    ====================================================== -->
+
+    <script src="script.js"></script>
+
+
+</body>
+
+</html>

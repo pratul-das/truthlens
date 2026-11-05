@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Login - TruthLens</title>
+
+    <link
+        rel="stylesheet"
+        href="style.css"
+    >
+
+</head>
+
+
+<body>
+
+<!-- =========================================================
+     NAVIGATION
+========================================================= -->
+
+<header class="navbar">
+
+    <div class="logo">
+    <span class="truthlens-3d">
+        <span class="truthlens-base">TRUTHLENS</span>
+        <span class="truthlens-color">TRUTHLENS</span>
+    </span>
+</div>
+
+    <nav>
+
+        <a
+            href="index.html"
+            data-i18n="navHome"
+        >
+            Home
+        </a>
+
+        <a
+            href="settings.html"
+            data-i18n="navSettings"
+        >
+            Settings
+        </a>
+
+        <a
+            href="login.html"
+            class="active"
+            data-i18n="navLogin"
+        >
+            Login
+        </a>
+        
+<a href="register.html">Register</a>
+
+    </nav>
+
+</header>
+
+<!-- =========================================================
+     LOGIN SECTION
+========================================================= -->
+
+<main class="professional-login">
+
+    <!-- =====================================================
+         LEFT BRANDING SECTION
+    ====================================================== -->
+
+    <section class="login-brand">
+
+
+        <div
+            class="brand-badge"
+            data-i18n="loginBrandBadge"
+        >
+            🛡️ Trusted AI Verification
+        </div>
+
+
+        <h1>
+
+            <span data-i18n="loginBrandTitle">
+                Welcome back to
+            </span>
+
+        </h1>
+
+
+        <p data-i18n="loginBrandDescription">
+
+            Verify information, explore the facts, and stay
+            informed with confidence.
+
+        </p>
+
+
+        <div class="brand-features">
+
+
+            <div data-i18n="loginFeature1">
+                ✓ AI-powered news analysis
+            </div>
+
+
+            <div data-i18n="loginFeature2">
+                ✓ Fast and simple verification
+            </div>
+
+
+            <div data-i18n="loginFeature3">
+                ✓ Designed for trustworthy information
+            </div>
+
+
+        </div>
+
+
+    </section>
+
+    <!-- =====================================================
+         LOGIN CARD
+    ====================================================== -->
+
+    <section class="professional-login-card">
+
+
+        <!-- LANGUAGE -->
+
+        <div class="login-language">
+
+            <label
+                for="languageSelect"
+                data-i18n="languageTitle"
+            >
+                Language
+            </label>
+
+
+            <select id="languageSelect">
+
+                <option value="English">
+                    English
+                </option>
+
+                <option value="Hindi">
+                    हिन्दी
+                </option>
+
+                <option value="Bengali">
+                    বাংলা
+                </option>
+
+            </select>
+
+        </div>
+
+
+
+        <!-- LOGIN HEADING -->
+
+        <div class="login-heading">
+
+
+            <h2 data-i18n="loginWelcome">
+                Welcome Back 👋
+            </h2>
+
+
+            <p data-i18n="loginSubtitle">
+                Sign in to continue to your account
+            </p>
+
+
+        </div>
+
+        <!-- =================================================
+             LOGIN FORM
+        ================================================== -->
+
+        <form
+            id="professionalLoginForm"
+            autocomplete="off"
+        >
+
+
+            <!-- =================================================
+                 FULL NAME
+            ================================================== -->
+
+            <div class="professional-field">
+
+
+                <label
+                    for="professionalName"
+                    data-i18n="loginNameLabel"
+                >
+                    Full Name
+                </label>
+
+
+                <input
+                    type="text"
+                    id="professionalName"
+                    name="truthlens-name"
+                    placeholder="Enter your full name"
+                    data-i18n-placeholder="loginNamePlaceholder"
+                    autocomplete="name"
+                    required
+                >
+
+
+            </div>
+
+            <!-- =================================================
+                 EMAIL
+            ================================================== -->
+
+            <div class="professional-field">
+
+
+                <label
+                    for="professionalEmail"
+                    data-i18n="loginEmailLabel"
+                >
+                    Email Address
+                </label>
+
+
+                <input
+                    type="email"
+                    id="professionalEmail"
+                    name="truthlens-email"
+                    placeholder="you@example.com"
+                    data-i18n-placeholder="loginEmailPlaceholder"
+                    autocomplete="off"
+                    required
+                >
+
+
+            </div>
+
+            <!-- =================================================
+                 PASSWORD
+            ================================================== -->
+
+            <div class="professional-field">
+
+
+                <div class="password-label-row">
+
+
+                    <label
+                        for="professionalPassword"
+                        data-i18n="loginPasswordLabel"
+                    >
+                        Password
+                    </label>
+
+
+                    <a
+                        href="#"
+                        id="forgotPassword"
+                        data-i18n="loginForgotPassword"
+                    >
+                        Forgot password?
+                    </a>
+
+
+                </div>
+
+
+                <div class="password-wrapper">
+
+
+                    <input
+                        type="password"
+                        id="professionalPassword"
+                        name="truthlens-password"
+                        placeholder="Enter your password"
+                        data-i18n-placeholder="loginPasswordPlaceholder"
+                        autocomplete="new-password"
+                        required
+                    >
+
+
+                    <button
+                        type="button"
+                        id="togglePassword"
+                        class="password-toggle"
+                        aria-label="Show password"
+                    >
+
+                        👁️
+
+                    </button>
+
+
+                </div>
+
+
+            </div>
+
+            <!-- =================================================
+                 REMEMBER ME
+            ================================================== -->
+
+            <div class="remember-row">
+
+
+                <label>
+
+
+                    <input
+                        type="checkbox"
+                        id="rememberMe"
+                        autocomplete="off"
+                    >
+
+
+                    <span data-i18n="loginRememberMe">
+                        Remember me
+                    </span>
+
+
+                </label>
+
+
+            </div>
+
+            <!-- =================================================
+                 SUBMIT
+            ================================================== -->
+
+            <button
+                type="submit"
+                class="professional-login-button"
+                id="professionalLoginButton"
+                data-i18n="loginSignIn"
+            >
+
+                Sign In
+
+            </button>
+
+            <!-- =================================================
+                 MESSAGE
+            ================================================== -->
+
+            <p
+                id="professionalLoginMessage"
+                class="professional-login-message"
+            >
+            </p>
+
+
+        </form>
+
+        
+        <!-- =================================================
+             FOOTER TEXT
+        ================================================== -->
+
+        <p class="login-footer-text">
+
+
+            <span data-i18n="loginAgreement">
+                By continuing, you agree to our
+            </span>
+
+
+            <a
+                href="#"
+                data-i18n="loginTerms"
+            >
+                Terms
+            </a>
+
+
+            <span data-i18n="loginAnd">
+                and
+            </span>
+
+
+            <a
+                href="#"
+                data-i18n="privacyPolicy"
+            >
+                Privacy Policy
+            </a>.
+
+        </p>
+
+    </section>
+
+</main>
+
+<!-- =========================================================
+     FOOTER
+========================================================= -->
+
+<footer class="footer">
+
+    <p data-i18n="loginFooter">
+
+        © 2026 TruthLens. All rights reserved.
+
+    </p>
+
+</footer>
+
+<!-- =========================================================
+     JAVASCRIPT
+========================================================= -->
+
+<script src="script.js"></script>
+
+
+</body>
+
+</html>

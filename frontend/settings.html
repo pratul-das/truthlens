@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Settings - TruthLens</title>
+
+    <link rel="stylesheet" href="style.css">
+
+</head>
+
+
+<body>
+
+    <!-- =========================
+         NAVBAR
+    ========================== -->
+
+    <header class="navbar">
+
+       <div class="logo">
+    <span class="truthlens-3d">
+        <span class="truthlens-base">TRUTHLENS</span>
+        <span class="truthlens-color">TRUTHLENS</span>
+    </span>
+</div>
+
+        <nav>
+
+            <a href="index.html">
+                <span data-i18n="navHome">Home</span>
+            </a>
+
+            <a href="settings.html" class="active">
+                <span data-i18n="navSettings">Settings</span>
+            </a>
+
+            <a href="login.html">
+                <span data-i18n="navLogin">Login</span>
+            </a>
+            <a href="register.html">Register</a>
+        </nav>
+
+    </header>
+
+
+    <!-- =========================
+         SETTINGS
+    ========================== -->
+
+    <main class="settings-container">
+
+        <h1 data-i18n="settingsTitle">
+            Settings
+        </h1>
+
+        <p class="settings-subtitle"
+           data-i18n="settingsSubtitle">
+            Manage your account and preferences
+        </p>
+
+
+        <!-- =========================
+             PROFILE
+        ========================== -->
+
+        <section class="settings-card">
+
+            <h2>
+                👤
+                <span data-i18n="profile">
+                    Profile
+                </span>
+            </h2>
+
+            <div class="profile-section">
+
+                <label class="profile-avatar" id="profileAvatar" for="profilePictureInput">B</label>
+
+<input
+    type="file"
+    id="profilePictureInput"
+    accept="image/*"
+    hidden
+>
+
+                <div class="profile-info">
+
+                    <h3 id="profileName">
+                        Bidisha Sinha
+                    </h3>
+
+                    <p id="profileEmail">
+                        bidisha@email.com
+                    </p>
+
+                </div>
+
+                <button
+                    type="button"
+                    class="edit-button"
+                    id="editProfileButton"
+                    data-i18n="editProfile">
+
+                    Edit Profile
+
+                </button>
+
+            </div>
+
+        </section>
+
+
+        <!-- =========================
+             NOTIFICATIONS
+        ========================== -->
+
+        <section class="settings-card">
+
+            <h2>
+                🔔
+                <span data-i18n="notifications">
+                    Notifications
+                </span>
+            </h2>
+
+
+            <!-- Analysis Notifications -->
+
+            <div class="setting-row">
+
+                <div>
+
+                    <h3 data-i18n="analysisNotifications">
+                        Analysis Notifications
+                    </h3>
+
+                    <p data-i18n="analysisDescription">
+                        Receive notifications about your verification results.
+                    </p>
+
+                </div>
+
+
+                <label class="switch">
+
+                    <input
+                        type="checkbox"
+                        id="analysisNotifications"
+                        checked>
+
+                    <span class="slider"></span>
+
+                </label>
+
+            </div>
+
+
+            <!-- Security Notifications -->
+
+            <div class="setting-row">
+
+                <div>
+
+                    <h3 data-i18n="securityNotifications">
+                        Security Notifications
+                    </h3>
+
+                    <p data-i18n="securityDescription">
+                        Receive important security alerts.
+                    </p>
+
+                </div>
+
+
+                <label class="switch">
+
+                    <input
+                        type="checkbox"
+                        id="securityNotifications"
+                        checked>
+
+                    <span class="slider"></span>
+
+                </label>
+
+            </div>
+
+        </section>
+
+
+        <!-- =========================
+             APPEARANCE
+        ========================== -->
+
+        <section class="settings-card">
+
+            <h2>
+                🎨
+                <span data-i18n="appearance">
+                    Appearance
+                </span>
+            </h2>
+
+
+            <!-- Light / Dark Mode -->
+
+            <div class="setting-row">
+
+                <div>
+
+                    <h3 data-i18n="themeTitle">
+                        Light / Dark Mode
+                    </h3>
+
+                    <p data-i18n="themeDescription">
+                        Switch between light and dark mode.
+                    </p>
+
+                </div>
+
+
+                <label class="switch">
+
+                    <input
+                        type="checkbox"
+                        id="themeToggle">
+
+                    <span class="slider"></span>
+
+                </label>
+
+            </div>
+
+
+            <!-- Language -->
+
+            <div class="setting-row">
+
+                <div>
+
+                    <h3 data-i18n="languageTitle">
+                        Language
+                    </h3>
+
+                    <p data-i18n="languageDescription">
+                        Choose your preferred language.
+                    </p>
+
+                </div>
+
+
+                <select id="languageSelect">
+
+                    <option value="English">
+                        English
+                    </option>
+
+                    <option value="Hindi">
+                        Hindi
+                    </option>
+
+                    <option value="Bengali">
+                        Bengali
+                    </option>
+
+                </select>
+
+            </div>
+
+        </section>
+
+
+        <!-- =========================
+             SUPPORT & INFORMATION
+        ========================== -->
+
+        <section class="settings-card">
+
+            <h2>
+
+                ℹ️
+
+                <span data-i18n="support">
+                    Support & Information
+                </span>
+
+            </h2>
+
+
+            <!-- Help & FAQ -->
+
+            <button
+                type="button"
+                class="link-row"
+                id="helpButton">
+
+                <span data-i18n="helpFaq">
+                    Help & FAQ
+                </span>
+
+                <span class="support-arrow">
+                    ›
+                </span>
+
+            </button>
+
+
+            <!-- About TruthLens -->
+
+            <button
+                type="button"
+                class="link-row"
+                id="aboutButton">
+
+                <span data-i18n="aboutTruthLens">
+                    About TruthLens
+                </span>
+
+                <span class="support-arrow">
+                    ›
+                </span>
+
+            </button>
+
+
+            <!-- Privacy Policy -->
+
+            <button
+                type="button"
+                class="link-row"
+                id="privacyButton">
+
+                <span data-i18n="privacyPolicy">
+                    Privacy Policy
+                </span>
+
+                <span class="support-arrow">
+                    ›
+                </span>
+
+            </button>
+
+        </section>
+
+
+        <!-- =========================
+             LOGOUT
+        ========================== -->
+
+        <button
+            type="button"
+            class="logout-button"
+            id="logoutButton">
+
+            Log Out
+
+        </button>
+
+    </main>
+
+
+    <!-- =====================================================
+         HELP & FAQ MODAL
+    ====================================================== -->
+
+    <div
+        class="support-modal"
+        id="helpModal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="helpModalTitle">
+
+        <div class="support-modal-content">
+
+            <button
+                type="button"
+                class="support-modal-close"
+                id="closeHelpModal"
+                aria-label="Close Help and FAQ">
+
+                ×
+
+            </button>
+
+
+            <h2 id="helpModalTitle">
+                ❓ Help & FAQ
+            </h2>
+
+
+            <p class="support-modal-intro">
+                Find answers to common questions about TruthLens.
+            </p>
+
+
+            <div class="faq-item">
+
+                <h3>
+                    What is TruthLens?
+                </h3>
+
+                <p>
+                    TruthLens is an AI-powered news verification tool
+                    that analyzes news text and links and provides a
+                    model-based classification.
+                </p>
+
+            </div>
+
+
+            <div class="faq-item">
+
+                <h3>
+                    How do I check a news article?
+                </h3>
+
+                <p>
+                    Go to the Home page, choose News Text or News Link,
+                    enter the information, and click Check News.
+                </p>
+
+            </div>
+
+
+            <div class="faq-item">
+
+                <h3>
+                    Is the result always correct?
+                </h3>
+
+                <p>
+                    No. TruthLens provides an AI/ML classification and
+                    should not be treated as absolute proof of whether
+                    information is true or false.
+                </p>
+
+            </div>
+
+
+            <div class="faq-item">
+
+                <h3>
+                    Can I change my profile information?
+                </h3>
+
+                <p>
+                    Yes. Use Edit Profile in the Settings page to
+                    update your name and email information.
+                </p>
+
+            </div>
+
+
+            <div class="faq-item">
+
+                <h3>
+                    Can I use TruthLens as a guest?
+                </h3>
+
+                <p>
+                    Yes. Select Continue as Guest on the Login page
+                    to use TruthLens without signing in.
+                </p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =====================================================
+         ABOUT TRUTHLENS MODAL
+    ====================================================== -->
+
+    <div
+        class="support-modal"
+        id="aboutModal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="aboutModalTitle">
+
+        <div class="support-modal-content">
+
+            <button
+                type="button"
+                class="support-modal-close"
+                id="closeAboutModal"
+                aria-label="Close About TruthLens">
+
+                ×
+
+            </button>
+
+
+            <h2 id="aboutModalTitle">
+                🛡️ About TruthLens
+            </h2>
+
+
+            <p class="support-modal-intro">
+                Learn more about TruthLens and how it helps you
+                evaluate information.
+            </p>
+
+
+            <div class="faq-item">
+
+                <h3>
+                    What is TruthLens?
+                </h3>
+
+                <p>
+                    TruthLens is an AI-powered news analysis platform
+                    designed to help users examine news articles,
+                    messages, and claims.
+                </p>
+
+            </div>
+
+
+            <div class="faq-item">
+
+                <h3>
+                    How does it work?
+                </h3>
+
+                <p>
+                    TruthLens analyzes the information you provide
+                    using a machine-learning model and returns a
+                    classification together with a confidence value.
+                </p>
+
+            </div>
+
+
+            <div class="faq-item">
+
+                <h3>
+                    What does the result mean?
+                </h3>
+
+                <p>
+                    The result represents the model's classification
+                    of the submitted information. It should be used
+                    as an aid for further verification rather than
+                    as absolute proof.
+                </p>
+
+            </div>
+
+
+            <div class="faq-item">
+
+                <h3>
+                    Our goal
+                </h3>
+
+                <p>
+                    TruthLens aims to make information checking simple,
+                    accessible, and easy to understand.
+                </p>
+
+            </div>
+
+
+            <div class="faq-item">
+
+                
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =====================================================
+         PRIVACY POLICY MODAL
+    ====================================================== -->
+
+    <div
+        class="support-modal"
+        id="privacyModal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="privacyModalTitle">
+
+        <div class="support-modal-content">
+
+            <button
+                type="button"
+                class="support-modal-close"
+                id="closePrivacyModal"
+                aria-label="Close Privacy Policy">
+
+                ×
+
+            </button>
+
+
+            <h2 id="privacyModalTitle">
+                🔒 Privacy Policy
+            </h2>
+
+
+            <p class="support-modal-intro">
+                Your privacy matters to us. This page explains how
+                TruthLens handles information when you use the application.
+            </p>
+
+
+            <div class="faq-item">
+
+                <h3>
+                    Information You Provide
+                </h3>
+
+                <p>
+                    Information you enter into TruthLens, such as news
+                    text, links, and profile details, may be used by the
+                    application to provide its features.
+                </p>
+
+            </div>
+
+
+            <div class="faq-item">
+
+                <h3>
+                    Profile Information
+                </h3>
+
+                <p>
+                    Your name and email information used by the current
+                    frontend login system are stored locally in your
+                    browser.
+                </p>
+
+            </div>
+
+
+            <div class="faq-item">
+
+                <h3>
+                    Local Storage
+                </h3>
+
+                <p>
+                    TruthLens uses browser local storage to remember
+                    settings such as your theme, language, notification
+                    preferences, and current profile information.
+                </p>
+
+            </div>
+
+
+            <div class="faq-item">
+
+                <h3>
+                    News Analysis
+                </h3>
+
+                <p>
+                    News information submitted for analysis may be sent
+                    to the TruthLens backend so that the machine-learning
+                    model can process it and return a result.
+                </p>
+
+            </div>
+
+
+            <div class="faq-item">
+
+                <h3>
+                    Important Notice
+                </h3>
+
+                <p>
+                    TruthLens provides machine-learning based analysis.
+                    Results should not be considered absolute proof of
+                    whether information is true or false.
+                </p>
+
+            </div>
+
+
+            <div class="faq-item">
+
+                <h3>
+                    Privacy Updates
+                </h3>
+
+                <p>
+                    This privacy information may be updated as TruthLens
+                    develops new features and functionality.
+                </p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =========================
+         JAVASCRIPT
+    ========================== -->
+
+   <script src="script.js" defer></script>
+
+</body>
+
+</html>

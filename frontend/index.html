@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>TruthLens - Fake News Detection</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <header class="navbar">
+
+<div class="logo">
+    <span class="truthlens-3d">
+        <span class="truthlens-base">TRUTHLENS</span>
+        <span class="truthlens-color">TRUTHLENS</span>
+    </span>
+</div>
+
+        <nav>
+    <a href="index.html" class="active" data-i18n="navHome">Home</a>
+<a href="settings.html" data-i18n="navSettings">Settings</a>
+<a href="login.html" data-i18n="navLogin">Login</a>
+<a href="register.html" data-i18n="navRegister">Register</a>
+</nav>
+
+    </header>
+
+
+    <main class="hero">
+
+        <div class="hero-content">
+
+            <div class="badge" data-i18n="aiBadge">
+    🛡️ AI-Powered News Verification
+</div>
+
+            <h1>
+    <span data-i18n="heroTitle">
+        See the truth
+    </span>
+    <br>
+    <span data-i18n="heroTitleSpan">
+        behind the news.
+    </span>
+</h1>
+
+            <p class="description" data-i18n="heroDescription">
+    TruthLens helps you identify potentially misleading or
+    fake news using intelligent analysis.
+</p>
+
+
+            <div class="detector-card">
+
+                <label for="newsText" data-i18n="checkNewsLabel">
+    Check a news article or message
+</label>
+
+               <div class="input-options">
+   <button type="button" class="input-option active" id="textOption" data-i18n="newsText">
+    📝 News Text
+</button>
+
+   <button type="button" class="input-option" id="linkOption" data-i18n="newsLink">
+    🔗 News Link
+</button>
+</div>
+
+<textarea
+    id="newsText"
+    data-i18n-placeholder="newsTextPlaceholder"
+    placeholder="Paste your news article, message, or claim here..."
+></textarea>
+
+<input
+    type="url"
+    id="newsLink"
+    data-i18n-placeholder="newsLinkPlaceholder"
+    placeholder="Paste the news article link here..."
+    style="display: none;"
+>
+
+                <button id="checkButton" data-i18n="checkNews">
+    🔍 Check News
+</button>
+
+                <div id="result" data-i18n="resultPlaceholder">
+    Your verification result will appear here.
+</div>
+
+            </div>
+
+        </div>
+
+    </main>
+
+    <footer>
+    <p data-i18n="footer">
+        © 2026 TruthLens • Helping you verify before you trust.
+    </p>
+</footer>
+
+    <script src="script.js"></script>
+
+</body>
+
+</html>
